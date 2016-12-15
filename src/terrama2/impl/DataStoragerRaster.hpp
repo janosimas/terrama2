@@ -20,7 +20,7 @@
  */
 
 /*!
-  \file terrama2/core/data-access/DataStoragerTiff.hpp
+  \file terrama2/core/data-access/DataStoragerRaster.hpp
 
   \brief
 
@@ -45,12 +45,12 @@ namespace terrama2
 {
   namespace core
   {
-    class DataStoragerTiff : public DataStorager
+    class DataStoragerRaster : public DataStorager
     {
       public:
-        DataStoragerTiff(DataProviderPtr outputDataProvider)
+        DataStoragerRaster(DataProviderPtr outputDataProvider)
                 : DataStorager(outputDataProvider) {}
-        ~DataStoragerTiff() {}
+        ~DataStoragerRaster() {}
 
         static DataStoragerPtr make(DataProviderPtr dataProvider);
         static DataStoragerType dataStoragerType() { return "GEOTIFF"; }

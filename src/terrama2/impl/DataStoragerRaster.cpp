@@ -20,14 +20,14 @@
  */
 
 /*!
-  \file terrama2/core/data-access/DataStoragerTiff.cpp
+  \file terrama2/core/data-access/DataStoragerRaster.cpp
 
   \brief
 
   \author Jano Simas
  */
 
-#include "DataStoragerTiff.hpp"
+#include "DataStoragerRaster.hpp"
 #include "../core/utility/TimeUtils.hpp"
 #include "../core/utility/Utils.hpp"
 #include "../core/utility/Verify.hpp"
@@ -44,19 +44,19 @@
 
 #include <boost/filesystem.hpp>
 
-terrama2::core::DataStoragerPtr terrama2::core::DataStoragerTiff::make(DataProviderPtr dataProvider)
+terrama2::core::DataStoragerPtr terrama2::core::DataStoragerRaster::make(DataProviderPtr dataProvider)
 {
-  return std::make_shared<DataStoragerTiff>(dataProvider);
+  return std::make_shared<DataStoragerRaster>(dataProvider);
 }
 
-std::string terrama2::core::DataStoragerTiff::zeroPadNumber(long num, int size) const
+std::string terrama2::core::DataStoragerRaster::zeroPadNumber(long num, int size) const
 {
   std::ostringstream ss;
   ss << std::setw(size) << std::setfill('0') << num;
   return ss.str();
 }
 
-std::string terrama2::core::DataStoragerTiff::replaceMask(const std::string& mask,
+std::string terrama2::core::DataStoragerRaster::replaceMask(const std::string& mask,
                                                           std::shared_ptr<te::dt::DateTime> timestamp,
                                                           terrama2::core::DataSetPtr dataSet) const
 {
@@ -171,7 +171,7 @@ std::string terrama2::core::DataStoragerTiff::replaceMask(const std::string& mas
   return fileName;
 }
 
-void terrama2::core::DataStoragerTiff::store(DataSetSeries series, DataSetPtr outputDataSet) const
+void terrama2::core::DataStoragerRaster::store(DataSetSeries series, DataSetPtr outputDataSet) const
 {
   if(!outputDataSet.get() || !series.syncDataSet.get())
   {
@@ -253,7 +253,7 @@ void terrama2::core::DataStoragerTiff::store(DataSetSeries series, DataSetPtr ou
   }
 }
 
-std::string terrama2::core::DataStoragerTiff::getCompleteURI(DataSetPtr outputDataSet) const
+std::string terrama2::core::DataStoragerRaster::getCompleteURI(DataSetPtr outputDataSet) const
 {
   std::string completeUri = dataProvider_->uri;
   try
@@ -273,7 +273,7 @@ std::string terrama2::core::DataStoragerTiff::getCompleteURI(DataSetPtr outputDa
   return completeUri;
 }
 
-std::shared_ptr< te::dt::TimeInstantTZ > terrama2::core::DataStoragerTiff::copy(DataSetPtr inputDataSet,
+std::shared_ptr< te::dt::TimeInstantTZ > terrama2::core::DataStoragerRaster::copy(DataSetPtr inputDataSet,
                                                                                 std::string inputUriStr,
                                                                                 DataSetPtr outputDataSet,
                                                                                 const Filter& filter,

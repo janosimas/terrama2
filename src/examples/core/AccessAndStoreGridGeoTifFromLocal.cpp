@@ -8,7 +8,7 @@
 #include <terrama2/core/data-model/DataSeries.hpp>
 #include <terrama2/core/data-model/DataSetGrid.hpp>
 #include <terrama2/impl/DataAccessorGeoTiff.hpp>
-#include <terrama2/impl/DataStoragerTiff.hpp>
+#include <terrama2/impl/DataStoragerRaster.hpp>
 #include <terrama2/core/data-access/GridSeries.hpp>
 
 #include <iostream>
@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
     terrama2::core::DataProviderPtr outputDataProviderPtr(outputDataProvider);
     outputDataProvider->uri = "file://";
     outputDataProvider->uri += TERRAMA2_DATA_DIR;
-    terrama2::core::DataStoragerTiff dataStorager(outputDataProviderPtr);
+    terrama2::core::DataStoragerRaster dataStorager(outputDataProviderPtr);
 
     terrama2::core::DataSeries* outputDataSeries = new terrama2::core::DataSeries();
     terrama2::core::DataSeriesPtr outputDataSeriesPtr(outputDataSeries);
