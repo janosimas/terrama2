@@ -31,18 +31,23 @@
 #define __TERRAMA2_SERVICES_COLLECTOR_CORE_SERVICE_HPP__
 
 #include "../../../core/utility/Service.hpp"
+#include "../../../core/data-model/Filter.hpp"
 #include "../../../core/Typedef.hpp"
 #include "../../../core/Shared.hpp"
 #include "../core/Shared.hpp"
 #include "../core/Typedef.hpp"
 #include "DataManager.hpp"
 #include "CollectorLogger.hpp"
+#include "IntersectionOperation.hpp"
 
 // STL
 #include <memory>
 
 namespace terrama2
 {
+  namespace core {
+    class FileRemover;
+  } /* core */
   namespace services
   {
     namespace collector
@@ -100,6 +105,7 @@ namespace terrama2
             virtual void updateAdditionalInfo(const QJsonObject& obj) noexcept override;
 
           protected:
+
             // comments on base class
             virtual bool hasDataOnQueue() noexcept override;
 
@@ -112,6 +118,17 @@ namespace terrama2
               \brief Callback method to collect and store data.
             */
             void collect(CollectorId collectorId, std::shared_ptr<CollectorLogger> logger, std::weak_ptr<DataManager> weakDataManager);
+            std::shared_ptr< te::dt::TimeInstantTZ > store(terrama2::services::collector::core::CollectorPtr collectorPtr,
+                                                           std::shared_ptr<terrama2::core::DataAccessor> dataAccessor,
+                                                           terrama2::services::collector::core::CollectorData data,
+                                                           std::map<DataSetId, std::string> uriMap,
+                                                           const terrama2::core::Filter& filter,
+                                                           std::shared_ptr<terrama2::core::FileRemover> remover) const;
+            std::shared_ptr< te::dt::TimeInstantTZ > copy(terrama2::services::collector::core::CollectorPtr collectorPtr,
+                                                          terrama2::services::collector::core::CollectorData data,
+                                                          std::map<DataSetId, std::string> uriMap,
+                                                          const terrama2::core::Filter& filter,
+                                                          std::shared_ptr<terrama2::core::FileRemover> remover) const;
 
             //! Connects signals from DataManager
             void connectDataManager();

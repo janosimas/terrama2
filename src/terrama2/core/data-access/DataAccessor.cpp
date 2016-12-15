@@ -32,6 +32,7 @@
 #include "../Exception.hpp"
 #include "../utility/Logger.hpp"
 #include "../utility/Utils.hpp"
+#include "../utility/Unpack.hpp"
 #include "../utility/DataRetrieverFactory.hpp"
 
 //terralib
@@ -39,6 +40,7 @@
 #include <terralib/dataaccess/dataset/DataSetType.h>
 #include <terralib/datatype/SimpleData.h>
 #include <terralib/datatype/Property.h>
+#include <terralib/core/uri/URI.h>
 
 
 //QT
@@ -49,7 +51,9 @@
 //STL
 #include <algorithm>
 
-terrama2::core::DataAccessor::DataAccessor(DataProviderPtr dataProvider, DataSeriesPtr dataSeries, const bool checkSemantics)
+#include <boost/filesystem.hpp>
+
+terrama2::core::DataAccessor::DataAccessor(DataProviderPtr dataProvider, DataSeriesPtr dataSeries, const bool /*checkSemantics*/)
   : dataProvider_(dataProvider),
     dataSeries_(dataSeries)
 {
@@ -243,11 +247,11 @@ terrama2::core::DataAccessor::getSeries(const std::map<DataSetId, std::string> u
 std::unordered_map<terrama2::core::DataSetPtr, terrama2::core::DataSetSeries >
 terrama2::core::DataAccessor::getSeries(const Filter& filter, std::shared_ptr<FileRemover> remover) const
 {
-  auto uriMap = getFiles(filter, remover);
+  auto uriMap = getUriMap(filter, remover);
   return getSeries(uriMap, filter, remover);
 }
 
-std::map<DataSetId, std::string> terrama2::core::DataAccessor::getFiles(const Filter& filter, std::shared_ptr<FileRemover> remover) const
+std::map<DataSetId, std::string> terrama2::core::DataAccessor::getUriMap(const Filter& filter, std::shared_ptr<FileRemover> remover) const
 {
   auto& retrieverFactory = DataRetrieverFactory::getInstance();
   DataRetrieverPtr dataRetriever = retrieverFactory.make(dataProvider_);
@@ -288,7 +292,7 @@ Srid terrama2::core::DataAccessor::getSrid(DataSetPtr dataSet) const
 {
   try
   {
-    Srid srid = std::stoi(getProperty(dataSet, dataSeries_, "srid"));
+    Srid srid = static_cast<Srid>(std::stoi(getProperty(dataSet, dataSeries_, "srid")));
     return srid;
   }
   catch(...)

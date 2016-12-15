@@ -33,7 +33,9 @@
 //TerraMA2
 #include "../Shared.hpp"
 #include "../data-model/DataManager.hpp"
+#include "../data-model/Filter.hpp"
 #include "../data-access/DataSetSeries.hpp"
+#include "../utility/FileRemover.hpp"
 
 namespace te
 {
@@ -41,6 +43,11 @@ namespace te
   {
     class DataSet;
   } /* mem */
+
+  namespace dt
+  {
+    class TimeInstantTZ;
+  } /* da */
 } /* te */
 
 namespace terrama2
@@ -72,7 +79,16 @@ namespace terrama2
         */
         virtual void store(DataSetSeries series, DataSetPtr outputDataSet) const = 0;
 
+        virtual std::shared_ptr< te::dt::TimeInstantTZ > copy(DataSetPtr inputDataSet,
+                                                              std::string inputUriStr,
+                                                              DataSetPtr outputDataSet,
+                                                              const Filter& filter,
+                                                              std::shared_ptr<terrama2::core::FileRemover> remover) const;
+
         virtual std::string getCompleteURI(DataSetPtr outputDataSet) const = 0;
+
+        std::string getMask(DataSetPtr dataSet) const;
+        std::string getTimezone(DataSetPtr dataSet, bool logError = true) const;
 
       protected:
         DataProviderPtr dataProvider_;//!< Destination server information.

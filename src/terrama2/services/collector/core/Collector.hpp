@@ -60,8 +60,21 @@ namespace terrama2
           std::map<DataSetId, DataSetId> inputOutputMap;//!< Map of source DataSet to destiny DataSet.
           terrama2::core::Filter filter;//!< Information on how input data should be filtered before storage.
           IntersectionPtr intersection;//!< Complementary data that should be appended on original data before storage.
+
+          bool keepOriginalFile = false;
         };
 
+        struct CollectorData
+        {
+          terrama2::core::DataSeriesPtr inputDataSeries;
+          terrama2::core::DataProviderPtr inputDataProvider;
+
+          terrama2::core::DataSeriesPtr outputDataSeries;
+          terrama2::core::DataProviderPtr outputDataProvider;
+
+          std::map<DataSeriesId, terrama2::core::DataSeriesPtr> dataSeriesMap;
+          std::map<DataSeriesId, terrama2::core::DataProviderPtr> dataProviderMap;
+        };
       } // end namespace core
     }   // end namespace collector
   }     // end namespace services

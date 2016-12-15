@@ -33,6 +33,7 @@
 #define __TERRAMA2_SERVICES_COLLECTOR_CORE_INTERSECTIONOPERATION_HPP__
 
 #include "Intersection.hpp"
+#include "Collector.hpp"
 #include "../core/Shared.hpp"
 #include "../../../core/data-access/DataSetSeries.hpp"
 
@@ -74,7 +75,7 @@ namespace terrama2
          \param collectedDataSetSeries DataSetSeries of the collected data.
          \return The new DataSetSeries with added columns from intersection.
          */
-        terrama2::core::DataSetSeries processIntersection(DataManagerPtr dataManager, IntersectionPtr intersection,
+        terrama2::core::DataSetSeries processIntersection(CollectorData data, IntersectionPtr intersection,
                                                           terrama2::core::DataSetSeries collectedDataSetSeries);
 
         /*!
@@ -99,11 +100,11 @@ namespace terrama2
          \param intersectionDataSeries DataSet to be used in the intersection.
          \return The new DataSetSeries with added columns from intersection.
          */
-        terrama2::core::DataSetSeries processVectorIntersection(DataManagerPtr dataManager,
-                                                                  core::IntersectionPtr intersection,
+        terrama2::core::DataSetSeries processVectorIntersection(core::IntersectionPtr intersection,
                                                                   terrama2::core::DataSetSeries collectedDataSetSeries,
                                                                   std::vector<std::string>& vecAttributes,
-                                                                  terrama2::core::DataSeriesPtr intersectionDataSeries);
+                                                                  terrama2::core::DataSeriesPtr intersectionDataSeries,
+                                                                  terrama2::core::DataProviderPtr dataProvider);
 
         /*!
          \brief Process the intersection for grid data.
@@ -114,11 +115,11 @@ namespace terrama2
          \param intersectionDataSeries DataSet to be used in the intersection.
          \return The new DataSetSeries with added columns from intersection.
          */
-        terrama2::core::DataSetSeries processGridIntersection(DataManagerPtr dataManager,
-                                                                  core::IntersectionPtr intersection,
+        terrama2::core::DataSetSeries processGridIntersection(core::IntersectionPtr intersection,
                                                                   terrama2::core::DataSetSeries collectedDataSetSeries,
                                                                   std::vector<std::string> vecAttr,
-                                                                  terrama2::core::DataSeriesPtr intersectionDataSeries);
+                                                                  terrama2::core::DataSeriesPtr intersectionDataSeries,
+                                                                  terrama2::core::DataProviderPtr dataProvider);
 
         /*!
           \brief Get list of bands to be intersected.

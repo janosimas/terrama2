@@ -48,35 +48,6 @@ terrama2::core::DataStoragerPtr terrama2::core::DataStoragerTiff::make(DataProvi
   return std::make_shared<DataStoragerTiff>(dataProvider);
 }
 
-std::string terrama2::core::DataStoragerTiff::getMask(DataSetPtr dataSet) const
-{
-  try
-  {
-    return dataSet->format.at("mask");
-  }
-  catch(...)
-  {
-    QString errMsg = QObject::tr("Undefined mask in dataset: %1.").arg(dataSet->id);
-    TERRAMA2_LOG_ERROR() << errMsg;
-    throw UndefinedTagException() << ErrorDescription(errMsg);
-  }
-}
-
-std::string terrama2::core::DataStoragerTiff::getTimezone(DataSetPtr dataSet, bool logError) const
-{
-  try
-  {
-    return dataSet->format.at("timezone");
-  }
-  catch(...)
-  {
-    QString errMsg = QObject::tr("Undefined timezone in dataset: %1.").arg(dataSet->id);
-    if(logError)
-      TERRAMA2_LOG_ERROR() << errMsg;
-    throw UndefinedTagException() << ErrorDescription(errMsg);
-  }
-}
-
 std::string terrama2::core::DataStoragerTiff::zeroPadNumber(long num, int size) const
 {
   std::ostringstream ss;
@@ -220,8 +191,8 @@ void terrama2::core::DataStoragerTiff::store(DataSetSeries series, DataSetPtr ou
     // nothing to be done
   }
 
-  QUrl uri(outputURI.c_str());
-  std::string path = uri.path().toStdString();
+  te::core::URI uri(outputURI);
+  std::string path = uri.path();
 
 
   std::string mask = getMask(outputDataSet);
@@ -261,6 +232,7 @@ void terrama2::core::DataStoragerTiff::store(DataSetSeries series, DataSetPtr ou
     }
 
     std::string filename = replaceMask(mask, timestamp, outputDataSet);
+    path = replaceMask(path, timestamp, outputDataSet);
 
     //Terralib cant understand .tiff extension
     std::string oddSuffix(".tiff");

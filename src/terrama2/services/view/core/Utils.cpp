@@ -261,11 +261,11 @@ QFileInfoList terrama2::services::view::core::dataSeriesFileList(const std::vect
 
     for(auto& folderURI : foldersList)
     {
-      QFileInfoList tempFileInfoList = dataAccessor->getDataFileInfoList(folderURI.absoluteFilePath().toStdString(),
-                                                                         dataAccessor->getMask(dataset),
-                                                                         timezone,
-                                                                         filter,
-                                                                         remover);
+      QFileInfoList tempFileInfoList = terrama2::core::getDataFileInfoList(folderURI.absoluteFilePath().toStdString(),
+                                                                           dataAccessor->getMask(dataset),
+                                                                           timezone,
+                                                                           filter,
+                                                                           remover);
 
       if(tempFileInfoList.empty())
       {

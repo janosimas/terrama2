@@ -71,21 +71,6 @@ namespace terrama2
 
         virtual QFileInfoList getFoldersList(const QFileInfoList& uris, const std::string& foldersMask) const;
 
-        /*!
-         * \brief Search in a folder and return a list of files that match the mask and filter
-         * \param folderURI The folder path to do the search
-         * \param mask The files mask
-         * \param timezone Timezone of the data
-         * \param filter DataSet Filter
-         * \param remover
-         * \return A QFileInfoList with  all files that match the mask and filter
-         */
-        static QFileInfoList getDataFileInfoList(const std::string& uri,
-                                                  const std::string& mask,
-                                                  const std::string& timezone,
-                                                  const Filter& filter,
-                                                  std::shared_ptr<terrama2::core::FileRemover> remover);
-
       protected:
         virtual std::shared_ptr<te::mem::DataSet> createCompleteDataSet(std::shared_ptr<te::da::DataSetType> dataSetType) const;
         virtual std::shared_ptr<te::mem::DataSet> internalCreateCompleteDataSet(std::shared_ptr<te::da::DataSetType> dataSetType, bool enableFileName, bool enableFileTimestamp) const final;
@@ -156,6 +141,14 @@ namespace terrama2
 
         std::shared_ptr< te::dt::TimeInstantTZ > getDataLastTimestamp(DataSetPtr dataSet, std::shared_ptr<te::da::DataSet> teDataSet) const;
 
+virtual std::map<DataSetId, std::string> getUriMap(const Filter& filter, std::shared_ptr<FileRemover> remover) const override;
+        std::map<DataSetId, std::string> decompressFiles(std::map<DataSetId, std::string> uriMap, std::shared_ptr<FileRemover> remover) const;
+        void decompressFile(const boost::filesystem::path& filePath,
+                                                        const boost::filesystem::path& outputFolder,
+                                                        std::shared_ptr<FileRemover> remover) const;
+        void decompressFolder(const boost::filesystem::path& inputFolder,
+                                                          const boost::filesystem::path& outputFolder,
+                                                          std::shared_ptr<FileRemover> remover) const;
     };
   }
 }

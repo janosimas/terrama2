@@ -31,8 +31,9 @@
 #include "Utils.hpp"
 #include "DataAccessorFactory.hpp"
 #include "SemanticsManager.hpp"
-
+#include "Unpack.hpp"
 #include "Logger.hpp"
+#include "FilterUtils.hpp"
 #include "../Exception.hpp"
 #include "../../Config.hpp"
 
@@ -67,6 +68,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QString>
+#include <QSet>
 
 namespace te
 {
@@ -524,4 +526,59 @@ std::unique_ptr<te::rst::Raster> terrama2::core::cloneRaster(const te::rst::Rast
   }
 
   return expansible;
+}
+
+QFileInfoList terrama2::core::getDataFileInfoList(const std::string& absoluteFolderPath,
+                                                                    const std::string& mask,
+                                                                    const std::string& timezone,
+                                                                    const Filter& filter,
+                                                                    std::shared_ptr<terrama2::core::FileRemover> remover)
+{
+  QDir dir(QString::fromStdString(absoluteFolderPath));
+  QFileInfoList fileInfoList = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable | QDir::CaseSensitive);
+  if(fileInfoList.empty())
+  {
+    QString errMsg = QObject::tr("No file in folder: %1.").arg(QString::fromStdString(absoluteFolderPath));
+    TERRAMA2_LOG_ERROR() << errMsg;
+    throw NoDataException() << ErrorDescription(errMsg);
+  }
+
+  boost::local_time::local_date_time noTime(boost::local_time::not_a_date_time);
+
+  QSet<QString> pathSet;
+  std::string tempFolderPath;
+  //fill file list
+  QFileInfoList newFileInfoList;
+  for(const auto& fileInfo : fileInfoList)
+  {
+    std::string name = fileInfo.fileName().toStdString();
+    std::string folderPath = dir.absolutePath().toStdString();
+
+
+    std::shared_ptr< te::dt::TimeInstantTZ > thisFileTimestamp = std::make_shared<te::dt::TimeInstantTZ>(noTime);
+    // Verify if the file name matches the mask
+    if(!isValidDataSetName(mask, filter, timezone, name, thisFileTimestamp))
+      continue;
+
+    if(terrama2::core::Unpack::isCompressed(folderPath+ "/" + name))
+    {
+      //unpack files
+      tempFolderPath = terrama2::core::Unpack::decompress(folderPath+ "/" + name, remover, tempFolderPath);
+      QDir tempDir(QString::fromStdString(tempFolderPath));
+      QFileInfoList fileList = tempDir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable | QDir::CaseSensitive);
+
+      // TODO: verify if the uncompressed files matches the mask?
+      for(const auto& fileI : fileList)
+        pathSet.insert(fileI.absoluteFilePath());
+    }
+    else
+    {
+      pathSet.insert(fileInfo.absoluteFilePath());
+    }
+  }
+
+  for(const auto& filePath : pathSet)
+    newFileInfoList.append(QFileInfo(filePath));
+
+  return newFileInfoList;
 }

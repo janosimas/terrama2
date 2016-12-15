@@ -84,6 +84,9 @@ terrama2::services::collector::core::CollectorPtr terrama2::services::collector:
   collector->intersection = terrama2::services::collector::core::fromIntersectionJson(json["intersection"].toObject());
   collector->active = json["active"].toBool();
 
+  if(json.contains("keep_original_file"))
+    collector->keepOriginalFile = json["keep_original_file"].toBool();
+
   return collectorPtr;
 }
 

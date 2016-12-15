@@ -35,12 +35,15 @@
 #include "../data-model/DataSeries.hpp"
 #include "../data-model/DataSet.hpp"
 #include "../data-model/Filter.hpp"
+#include "FileRemover.hpp"
 
 // STL
 #include <string>
 
 #include <terralib/geometry/Coord2D.h>
 #include <terralib/raster/Raster.h>
+
+#include <QFileInfo>
 
 // Forward declaration
 class QJsonDocument;
@@ -157,6 +160,21 @@ namespace terrama2
       The content will be copied by block.
     */
     std::unique_ptr<te::rst::Raster> cloneRaster(const te::rst::Raster& raster);
+
+    /*!
+     * \brief Search in a folder and return a list of files that match the mask and filter
+     * \param folderURI The folder path to do the search
+     * \param mask The files mask
+     * \param timezone Timezone of the data
+     * \param filter DataSet Filter
+     * \param remover
+     * \return A QFileInfoList with  all files that match the mask and filter
+     */
+    QFileInfoList getDataFileInfoList(const std::string& uri,
+                                      const std::string& mask,
+                                      const std::string& timezone,
+                                      const Filter& filter,
+                                      std::shared_ptr<terrama2::core::FileRemover> remover);
 
   } // end namespace core
 }   // end namespace terrama2

@@ -66,7 +66,9 @@
 #include <terralib/raster/Grid.h>
 #include <terralib/sa/core/Utils.h>
 
-terrama2::core::DataSetSeries terrama2::services::collector::core::processIntersection(DataManagerPtr dataManager, IntersectionPtr intersection, terrama2::core::DataSetSeries collectedDataSetSeries)
+terrama2::core::DataSetSeries terrama2::services::collector::core::processIntersection(terrama2::services::collector::core::CollectorData data,
+                                                                                       IntersectionPtr intersection,
+                                                                                       terrama2::core::DataSetSeries collectedDataSetSeries)
 {
   if(!intersection)
     return collectedDataSetSeries;
@@ -78,15 +80,16 @@ terrama2::core::DataSetSeries terrama2::services::collector::core::processInters
     DataSeriesId dataSeriesId = it->first;
     std::vector<std::string> vecAttr = it->second;
 
-    auto intersectionDataSeries = dataManager->findDataSeries(dataSeriesId);
+    auto intersectionDataSeries = data.dataSeriesMap.at(dataSeriesId);
+    auto dataProvider = data.dataProviderMap.at(dataSeriesId);
 
     if(intersectionDataSeries->semantics.dataSeriesType == terrama2::core::DataSeriesType::GEOMETRIC_OBJECT)
     {
-      collectedDataSetSeries = processVectorIntersection(dataManager, intersection, collectedDataSetSeries, vecAttr, intersectionDataSeries);
+      collectedDataSetSeries = processVectorIntersection(intersection, collectedDataSetSeries, vecAttr, intersectionDataSeries, dataProvider);
     }
     else if(intersectionDataSeries->semantics.dataSeriesType == terrama2::core::DataSeriesType::GRID)
     {
-      collectedDataSetSeries = processGridIntersection(dataManager, intersection, collectedDataSetSeries, vecAttr, intersectionDataSeries);
+      collectedDataSetSeries = processGridIntersection(intersection, collectedDataSetSeries, vecAttr, intersectionDataSeries, dataProvider);
     }
 
   }
@@ -95,11 +98,11 @@ terrama2::core::DataSetSeries terrama2::services::collector::core::processInters
 
 }
 
-terrama2::core::DataSetSeries terrama2::services::collector::core::processVectorIntersection(DataManagerPtr dataManager,
-    core::IntersectionPtr intersection,
+terrama2::core::DataSetSeries terrama2::services::collector::core::processVectorIntersection(core::IntersectionPtr intersection,
     terrama2::core::DataSetSeries collectedDataSetSeries,
     std::vector<std::string>& vecAttributes,
-    terrama2::core::DataSeriesPtr intersectionDataSeries)
+    terrama2::core::DataSeriesPtr intersectionDataSeries,
+    terrama2::core::DataProviderPtr dataProvider)
 {
 
 
@@ -140,9 +143,6 @@ terrama2::core::DataSetSeries terrama2::services::collector::core::processVector
   std::shared_ptr<te::da::DataSetType> outputDt;
 
   std::vector<te::dt::Property*> collectedProperties = collectedDataSetType->getProperties();
-
-
-  auto dataProvider = dataManager->findDataProvider(intersectionDataSeries->dataProviderId);
 
   //accessing data
   terrama2::core::DataAccessorPtr accessor = terrama2::core::DataAccessorFactory::getInstance().make(dataProvider, intersectionDataSeries);
@@ -338,11 +338,11 @@ std::vector<int> terrama2::services::collector::core::getBands(std::vector<std::
   return bands;
 }
 
-terrama2::core::DataSetSeries terrama2::services::collector::core::processGridIntersection(DataManagerPtr dataManager,
-    core::IntersectionPtr intersection,
+terrama2::core::DataSetSeries terrama2::services::collector::core::processGridIntersection(core::IntersectionPtr intersection,
     terrama2::core::DataSetSeries collectedDataSetSeries,
     std::vector<std::string> vecAttr,
-    terrama2::core::DataSeriesPtr intersectionDataSeries)
+    terrama2::core::DataSeriesPtr intersectionDataSeries,
+    terrama2::core::DataProviderPtr dataProvider)
 {
   if(intersectionDataSeries->semantics.dataSeriesType != terrama2::core::DataSeriesType::GRID)
   {
@@ -353,8 +353,6 @@ terrama2::core::DataSetSeries terrama2::services::collector::core::processGridIn
 
   auto collectedData = collectedDataSetSeries.syncDataSet;
   auto collectedDataSetType = collectedDataSetSeries.teDataSetType;
-
-  auto dataProvider = dataManager->findDataProvider(intersectionDataSeries->dataProviderId);
 
   //accessing data
   terrama2::core::DataAccessorPtr accessor = terrama2::core::DataAccessorFactory::getInstance().make(dataProvider, intersectionDataSeries);

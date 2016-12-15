@@ -362,60 +362,6 @@ QFileInfoList terrama2::core::DataAccessorFile::getFoldersList(const QFileInfoLi
 }
 
 
-QFileInfoList terrama2::core::DataAccessorFile::getDataFileInfoList(const std::string& absoluteFolderPath,
-                                                                    const std::string& mask,
-                                                                    const std::string& timezone,
-                                                                    const Filter& filter,
-                                                                    std::shared_ptr<terrama2::core::FileRemover> remover)
-{
-  QDir dir(QString::fromStdString(absoluteFolderPath));
-  QFileInfoList fileInfoList = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable | QDir::CaseSensitive);
-  if(fileInfoList.empty())
-  {
-    QString errMsg = QObject::tr("No file in folder: %1.").arg(QString::fromStdString(absoluteFolderPath));
-    TERRAMA2_LOG_ERROR() << errMsg;
-    throw NoDataException() << ErrorDescription(errMsg);
-  }
-
-  boost::local_time::local_date_time noTime(boost::local_time::not_a_date_time);
-
-  QSet<QString> pathSet;
-  std::string tempFolderPath;
-  //fill file list
-  QFileInfoList newFileInfoList;
-  for(const auto& fileInfo : fileInfoList)
-  {
-    std::string name = fileInfo.fileName().toStdString();
-    std::string folderPath = dir.absolutePath().toStdString();
-
-
-    std::shared_ptr< te::dt::TimeInstantTZ > thisFileTimestamp = std::make_shared<te::dt::TimeInstantTZ>(noTime);
-    // Verify if the file name matches the mask
-    if(!isValidDataSetName(mask, filter, timezone, name, thisFileTimestamp))
-      continue;
-
-    if(terrama2::core::Unpack::isCompressed(folderPath+ "/" + name))
-    {
-      //unpack files
-      tempFolderPath = terrama2::core::Unpack::decompress(folderPath+ "/" + name, remover, tempFolderPath);
-      QDir tempDir(QString::fromStdString(tempFolderPath));
-      QFileInfoList fileList = tempDir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable | QDir::CaseSensitive);
-
-      // TODO: verify if the uncompressed files matches the mask?
-      for(const auto& fileI : fileList)
-        pathSet.insert(fileI.absoluteFilePath());
-    }
-    else
-    {
-      pathSet.insert(fileInfo.absoluteFilePath());
-    }
-  }
-
-  for(const auto& filePath : pathSet)
-    newFileInfoList.append(QFileInfo(filePath));
-
-  return newFileInfoList;
-}
 
 terrama2::core::DataSetSeries terrama2::core::DataAccessorFile::getSeries(const std::string& uri,
                                                                           const terrama2::core::Filter& filter,
@@ -672,4 +618,64 @@ std::shared_ptr< te::dt::TimeInstantTZ > terrama2::core::DataAccessorFile::getDa
   }
 
   return lastDateTimeTz;
+}
+
+std::map<DataSetId, std::string> terrama2::core::DataAccessorFile::getUriMap(const Filter& filter, std::shared_ptr<FileRemover> remover) const
+{
+  auto uriMap = terrama2::core::DataAccessor::getUriMap(filter, remover);
+  return decompressFiles(uriMap, remover);
+}
+
+
+void terrama2::core::DataAccessorFile::decompressFile(const boost::filesystem::path& filePath,
+                                                      const boost::filesystem::path& outputFolder,
+                                                      std::shared_ptr<FileRemover> remover) const
+{
+  std::string currentFile = filePath.string();
+  if(terrama2::core::Unpack::isCompressed(currentFile))
+  {
+    //unpack files
+    terrama2::core::Unpack::decompress(currentFile, remover, outputFolder.string());
+  }
+  else
+  {
+    boost::filesystem::copy_file(filePath, outputFolder.string()+"/"+filePath.filename().string());
+  }
+}
+
+void terrama2::core::DataAccessorFile::decompressFolder(const boost::filesystem::path& inputFolder,
+                                                        const boost::filesystem::path& outputFolder,
+                                                        std::shared_ptr<FileRemover> remover) const
+{
+  boost::filesystem::directory_iterator end_itr;
+  // cycle through the directory
+  for (boost::filesystem::directory_iterator itr(inputFolder); itr != end_itr; ++itr)
+  {
+    auto path = itr->path();
+    if (boost::filesystem::is_regular_file(path))
+      decompressFile(path, outputFolder, remover);
+    else
+      decompressFolder(path, outputFolder, remover);
+  }
+}
+
+std::map<DataSetId, std::string> terrama2::core::DataAccessorFile::decompressFiles(std::map<DataSetId, std::string> uriMap, std::shared_ptr<FileRemover> remover) const
+{
+  for (auto it = uriMap.begin(); it != uriMap.end(); ++it)
+  {
+    boost::filesystem::path tempDir = boost::filesystem::temp_directory_path();
+    boost::filesystem::path tempTerrama(tempDir.string()+"/terrama2-unpack");
+    boost::filesystem::path upackDir = boost::filesystem::unique_path(tempTerrama.string()+"/%%%%-%%%%-%%%%-%%%%");
+    boost::filesystem::create_directories(upackDir);
+
+    remover->addTemporaryFolder(upackDir.string());
+
+    te::core::URI inputUri(it->second);
+    boost::filesystem::path dataDir(inputUri.path());
+    decompressFolder(dataDir, upackDir, remover);
+
+    it->second = "file://"+upackDir.string();
+  }
+
+  return uriMap;
 }

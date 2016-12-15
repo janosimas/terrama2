@@ -30,7 +30,6 @@
 #include "Service.hpp"
 #include "Collector.hpp"
 #include "CollectorLogger.hpp"
-#include "IntersectionOperation.hpp"
 
 #include "../../../core/Shared.hpp"
 
@@ -138,6 +137,76 @@ void terrama2::services::collector::core::Service::addToQueue(CollectorId collec
   }
 }
 
+std::shared_ptr< te::dt::TimeInstantTZ >
+terrama2::services::collector::core::Service::store(terrama2::services::collector::core::CollectorPtr collectorPtr,
+                                                    std::shared_ptr<terrama2::core::DataAccessor> dataAccessor,
+                                                    terrama2::services::collector::core::CollectorData data,
+                                                    std::map<DataSetId, std::string> uriMap,
+                                                    const terrama2::core::Filter& filter,
+                                                    std::shared_ptr<terrama2::core::FileRemover> remover) const
+{
+  auto dataMap = dataAccessor->getSeries(uriMap, filter, remover);
+  if(dataMap.empty())
+    throw Exception() << ErrorDescription(tr("No data found."));
+
+  auto lastDateTime = dataAccessor->lastDateTime();
+
+  /////////////////////////////////////////////////////////////////////////
+  // storing data
+
+  auto inputOutputMap = collectorPtr->inputOutputMap;
+  auto dataSetLst = data.outputDataSeries->datasetList;
+  auto dataStorager = terrama2::core::DataStoragerFactory::getInstance().make(data.outputDataSeries->semantics.dataFormat, data.outputDataProvider);
+  for(auto& item : dataMap)
+  {
+    // intersection
+    if(collectorPtr->intersection)
+    {
+      item.second = processIntersection(data, collectorPtr->intersection, item.second);
+    }
+
+    // store each item
+    DataSetId outputDataSetId = inputOutputMap.at(item.first->id);
+    auto outputDataSet = std::find_if(dataSetLst.cbegin(), dataSetLst.cend(), [outputDataSetId](terrama2::core::DataSetPtr dataSet) { return dataSet->id == outputDataSetId; });
+    dataStorager->store(item.second, *outputDataSet);
+  }
+
+  return lastDateTime;
+}
+
+std::shared_ptr< te::dt::TimeInstantTZ >
+terrama2::services::collector::core::Service::copy(terrama2::services::collector::core::CollectorPtr collectorPtr,
+                                                   terrama2::services::collector::core::CollectorData data,
+                                                   std::map<DataSetId, std::string> uriMap,
+                                                   const terrama2::core::Filter& filter,
+                                                   std::shared_ptr<terrama2::core::FileRemover> remover) const
+{
+  /////////////////////////////////////////////////////////////////////////
+  // copying data
+
+  std::shared_ptr< te::dt::TimeInstantTZ > lastDateTime;
+
+  auto inputOutputMap = collectorPtr->inputOutputMap;
+  auto outputDataSetLst = data.outputDataSeries->datasetList;
+  auto dataStorager = terrama2::core::DataStoragerFactory::getInstance().make(data.outputDataSeries->semantics.dataFormat, data.outputDataProvider);
+  for(auto& item : uriMap)
+  {
+    auto inputDataSetId = item.first;
+    // store each item
+    DataSetId outputDataSetId = inputOutputMap.at(inputDataSetId);
+    auto outputDataSet = *std::find_if(outputDataSetLst.cbegin(), outputDataSetLst.cend(), [outputDataSetId](terrama2::core::DataSetPtr dataSet) { return dataSet->id == outputDataSetId; });
+
+    auto inputDataSetList = data.inputDataSeries->datasetList;
+    auto inputDataSet = *std::find_if(inputDataSetList.cbegin(), inputDataSetList.cend(), [inputDataSetId](terrama2::core::DataSetPtr dataSet) { return dataSet->id == inputDataSetId; });
+    auto tempDateTime = dataStorager->copy(inputDataSet, item.second, outputDataSet, filter, remover);
+
+    if(!lastDateTime || *lastDateTime < *tempDateTime)
+      lastDateTime = tempDateTime;
+  }
+
+  return lastDateTime;
+}
+
 void terrama2::services::collector::core::Service::collect(CollectorId collectorId,
                                                            std::shared_ptr<CollectorLogger> logger,
                                                            std::weak_ptr<DataManager> weakDataManager)
@@ -158,6 +227,8 @@ void terrama2::services::collector::core::Service::collect(CollectorId collector
 
     logId = logger->start(collectorId);
 
+    CollectorData data;
+
     //////////////////////////////////////////////////////////
     //  aquiring metadata
     auto lock = dataManager->getLock();
@@ -165,12 +236,25 @@ void terrama2::services::collector::core::Service::collect(CollectorId collector
     auto collectorPtr = dataManager->findCollector(collectorId);
 
     // input data
-    auto inputDataSeries = dataManager->findDataSeries(collectorPtr->inputDataSeries);
-    auto inputDataProvider = dataManager->findDataProvider(inputDataSeries->dataProviderId);
+    data.inputDataSeries = dataManager->findDataSeries(collectorPtr->inputDataSeries);
+    data.inputDataProvider = dataManager->findDataProvider(data.inputDataSeries->dataProviderId);
 
     // output data
-    auto outputDataSeries = dataManager->findDataSeries(collectorPtr->outputDataSeries);
-    auto outputDataProvider = dataManager->findDataProvider(outputDataSeries->dataProviderId);
+    data.outputDataSeries = dataManager->findDataSeries(collectorPtr->outputDataSeries);
+    data.outputDataProvider = dataManager->findDataProvider(data.outputDataSeries->dataProviderId);
+
+    auto intersection = collectorPtr->intersection;
+    if(intersection)
+    {
+      for(auto it : intersection->attributeMap)
+      {
+        auto dataSeries = dataManager->findDataSeries(it.first);
+        auto dataProvider = dataManager->findDataProvider(dataSeries->dataProviderId);
+
+        data.dataSeriesMap.emplace(it.first, dataSeries);
+        data.dataProviderMap.emplace(it.first, dataProvider);
+      }
+    }
 
     // dataManager no longer in use
     lock.unlock();
@@ -184,18 +268,26 @@ void terrama2::services::collector::core::Service::collect(CollectorId collector
 
     if(lastCollectedDataTimestamp.get() && filter.discardBefore.get())
     {
-      if(filter.discardBefore < lastCollectedDataTimestamp)
+      if(*filter.discardBefore < *lastCollectedDataTimestamp)
         filter.discardBefore = lastCollectedDataTimestamp;
     }
     else if(lastCollectedDataTimestamp.get())
       filter.discardBefore = lastCollectedDataTimestamp;
 
     auto remover = std::make_shared<terrama2::core::FileRemover>();
-    auto dataAccessor = terrama2::core::DataAccessorFactory::getInstance().make(inputDataProvider, inputDataSeries);
+    auto dataAccessor = terrama2::core::DataAccessorFactory::getInstance().make(data.inputDataProvider, data.inputDataSeries);
 
-    auto uriMap = dataAccessor->getFiles(filter, remover);
-    auto dataMap = dataAccessor->getSeries(uriMap, filter, remover);
-    if(dataMap.empty())
+    auto uriMap = dataAccessor->getUriMap(filter, remover);
+
+    std::shared_ptr< te::dt::TimeInstantTZ > lastDateTime;
+    try
+    {
+      if(collectorPtr->keepOriginalFile)
+        lastDateTime = copy(collectorPtr, data, uriMap, filter, remover);
+      else
+        lastDateTime = store(collectorPtr, dataAccessor, data, uriMap, filter, remover);
+    }
+    catch (...)
     {
       QString errMsg = tr("No data to collect.");
       logger->result(CollectorLogger::DONE, nullptr, logId);
@@ -206,37 +298,14 @@ void terrama2::services::collector::core::Service::collect(CollectorId collector
       sendProcessFinishedSignal(collectorId, false);
       return;
     }
-    auto lastDateTime = dataAccessor->lastDateTime();
 
-    /////////////////////////////////////////////////////////////////////////
-    // storing data
-
-    auto inputOutputMap = collectorPtr->inputOutputMap;
-    auto dataSetLst = outputDataSeries->datasetList;
-    auto dataStorager = terrama2::core::DataStoragerFactory::getInstance().make(outputDataSeries->semantics.dataFormat, outputDataProvider);
-    for(auto& item : dataMap)
-    {
-      // intersection
-      if(collectorPtr->intersection)
-      {
-        //FIXME: the datamanager is beeing used outside the lock
-        item.second = processIntersection(dataManager, collectorPtr->intersection, item.second);
-      }
-
-
-      // store each item
-      DataSetId outputDataSetId = inputOutputMap.at(item.first->id);
-      auto outputDataSet = std::find_if(dataSetLst.cbegin(), dataSetLst.cend(), [outputDataSetId](terrama2::core::DataSetPtr dataSet) { return dataSet->id == outputDataSetId; });
-      dataStorager->store(item.second, *outputDataSet);
-    }
 
     TERRAMA2_LOG_INFO() << tr("Data from collector %1 collected successfully.").arg(collectorId);
 
     logger->result(CollectorLogger::DONE, lastDateTime, logId);
 
-
-    sendProcessFinishedSignal(collectorId, true);
     notifyWaitQueue(collectorId);
+    sendProcessFinishedSignal(collectorId, true);
     return;
 
   }
@@ -246,7 +315,7 @@ void terrama2::services::collector::core::Service::collect(CollectorId collector
     TERRAMA2_LOG_ERROR() << errMsg << std::endl;
     TERRAMA2_LOG_INFO() << tr("Collection for collector %1 finished with error(s).").arg(collectorId);
   }
-  catch(const terrama2::core::NoDataException& e)
+  catch(const terrama2::core::NoDataException&)
   {
     TERRAMA2_LOG_INFO() << tr("Collection finished but there was no data available for collector %1.").arg(collectorId);
 
