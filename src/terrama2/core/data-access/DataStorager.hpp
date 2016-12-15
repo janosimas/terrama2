@@ -83,7 +83,7 @@ namespace terrama2
                                                               std::string inputUriStr,
                                                               DataSetPtr outputDataSet,
                                                               const Filter& filter,
-                                                              std::shared_ptr<terrama2::core::FileRemover> remover) const;
+                                                              std::shared_ptr<terrama2::core::FileRemover> remover) const = 0;
 
         virtual std::string getCompleteURI(DataSetPtr outputDataSet) const = 0;
 

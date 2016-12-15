@@ -46,6 +46,12 @@ namespace terrama2
 
         virtual void store(DataSetSeries series, DataSetPtr outputDataSet) const override;
 
+        virtual std::shared_ptr< te::dt::TimeInstantTZ > copy(DataSetPtr inputDataSet,
+                                                              std::string inputUriStr,
+                                                              DataSetPtr outputDataSet,
+                                                              const Filter& filter,
+                                                              std::shared_ptr<terrama2::core::FileRemover> remover) const override { assert(0); return nullptr; };
+
       protected:
         //! Return the dataset name
         virtual std::string getDataSetName(DataSetPtr dataSet) const = 0;

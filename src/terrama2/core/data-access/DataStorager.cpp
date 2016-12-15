@@ -32,7 +32,6 @@
 #include "DataStorager.hpp"
 #include "../utility/Logger.hpp"
 #include "../utility/Utils.hpp"
-#include "../utility/FilterUtils.hpp"
 #include "../data-model/DataProvider.hpp"
 #include "../Exception.hpp"
 #include "../../Config.hpp"
@@ -52,88 +51,6 @@ terrama2::core::DataStorager::DataStorager(DataProviderPtr outputDataProvider)
     throw DataStoragerException() << ErrorDescription(errMsg);
   }
 }
-
-std::shared_ptr< te::dt::TimeInstantTZ > terrama2::core::DataStorager::copy(DataSetPtr inputDataSet,
-                                                                            std::string inputUriStr,
-                                                                            DataSetPtr outputDataSet,
-                                                                            const Filter& filter,
-                                                                            std::shared_ptr<terrama2::core::FileRemover> remover) const
-{
-  if(!outputDataSet)
-  {
-    QString errMsg = QObject::tr("Mandatory parameters not provided.");
-    TERRAMA2_LOG_ERROR() << errMsg;
-    throw DataStoragerException() << ErrorDescription(errMsg);
-  }
-
-  std::string mask = getMask(inputDataSet);
-  if(mask.empty())
-  {
-    QString errMsg = QObject::tr("Empty mask for output grid.");
-    TERRAMA2_LOG_ERROR() << errMsg;
-    throw DataStoragerException() << ErrorDescription(errMsg);
-  }
-
-  std::string timezone = getTimezone(inputDataSet);
-
-  std::string outputURIStr = dataProvider_->uri;
-  try
-  {
-    std::string folder = terrama2::core::getFolderMask(outputDataSet, nullptr);
-    if (!folder.empty())
-      outputURIStr += "/" + folder;
-  }
-  catch(...)
-  {
-    // nothing to be done
-  }
-
-  te::core::URI inputUri(inputUriStr);
-  if(inputUri.scheme() != "file")
-  {
-    QString errMsg = QObject::tr("Wrong scheme.");
-    TERRAMA2_LOG_ERROR() << errMsg;
-    throw DataStoragerException() << ErrorDescription(errMsg);
-  }
-
-  te::core::URI outputUri(outputURIStr);
-  if(outputUri.scheme() != "file")
-  {
-    QString errMsg = QObject::tr("Wrong scheme.");
-    TERRAMA2_LOG_ERROR() << errMsg;
-    throw DataStoragerException() << ErrorDescription(errMsg);
-  }
-
-  std::string outputPath = outputUri.path();
-  std::string inputPath = inputUri.path();
-  QFileInfoList tempFileInfoList = terrama2::core::getDataFileInfoList(inputPath,
-                                                                       mask,
-                                                                       timezone,
-                                                                       filter,
-                                                                       remover);
-
-  boost::local_time::local_date_time noTime(boost::local_time::not_a_date_time);
-  std::shared_ptr< te::dt::TimeInstantTZ > fileTimestamp;
-
-  for(const auto& fileInfo : tempFileInfoList)
-  {
-    std::shared_ptr< te::dt::TimeInstantTZ > thisFileTimestamp = std::make_shared<te::dt::TimeInstantTZ>(noTime);
-    // Verify if the file name matches the mask
-    terrama2::core::isValidDataSetName(mask, filter, timezone, fileInfo.fileName().toStdString(), thisFileTimestamp);
-
-    boost::filesystem::path file_folder(outputPath);
-    boost::filesystem::create_directories(file_folder);
-    boost::filesystem::path tempFile(inputPath+"/"+fileInfo.fileName().toStdString());
-    boost::filesystem::path outputFileFile(outputPath+"/"+fileInfo.fileName().toStdString());
-    boost::filesystem::copy_file(tempFile, outputFileFile);
-
-    if(!fileTimestamp || *fileTimestamp < *thisFileTimestamp)
-      fileTimestamp = thisFileTimestamp;
-  }
-
-  return fileTimestamp;
-}
-
 
 std::string terrama2::core::DataStorager::getMask(DataSetPtr dataSet) const
 {

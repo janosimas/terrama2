@@ -59,6 +59,12 @@ namespace terrama2
 
         virtual std::string getCompleteURI(DataSetPtr outputDataSet) const override;
 
+        virtual std::shared_ptr< te::dt::TimeInstantTZ > copy(DataSetPtr inputDataSet,
+                                                              std::string inputUriStr,
+                                                              DataSetPtr outputDataSet,
+                                                              const Filter& filter,
+                                                              std::shared_ptr<terrama2::core::FileRemover> remover) const override;
+
       protected:
         std::string zeroPadNumber(long num, int size) const;
         std::string replaceMask(const std::string& mask,
