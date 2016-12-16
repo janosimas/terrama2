@@ -394,16 +394,16 @@ void TsDataAccessorDcpToa5::TestFailDataSetInvalid()
 
     auto create_MockDataSet = [](te::da::MockDataSet* mockDataSet)->te::da::MockDataSet* { return mockDataSet; };
 
-    EXPECT_CALL(*mockDataSourceTransactor, getDataSetNames()).WillOnce(::testing::Return(dataSetNames));
-    EXPECT_CALL(*mockDataSourceTransactor, DataSetTypePtrReturn()).WillOnce(::testing::Return(new te::da::DataSetType(name)));
+     EXPECT_CALL(*mockDataSourceTransactor, getDataSetNames()).WillOnce(::testing::Return(dataSetNames));
+     EXPECT_CALL(*mockDataSourceTransactor, DataSetTypePtrReturn()).WillOnce(::testing::Return(new te::da::DataSetType(name)));
     EXPECT_CALL(*mockDataSourceTransactor, DataSetPtrReturn()).WillOnce(::testing::Invoke(std::bind(create_MockDataSet, mockDataSet.release())));
 
     auto create_MockDataSourceTransactor = [](te::da::MockDataSourceTransactor* mockDataSourceTransactor)-> te::da::MockDataSourceTransactor* {return mockDataSourceTransactor;};
 
-    EXPECT_CALL(*mock_, open()).WillOnce(Return());
-    EXPECT_CALL(*mock_, isOpened()).WillOnce(Return(true));
-    EXPECT_CALL(*mock_, DataSourceTransactoPtrReturn()).WillOnce(::testing::Invoke(std::bind(create_MockDataSourceTransactor, mockDataSourceTransactor.release())));
-    EXPECT_CALL(*mock_, close()).WillOnce(Return());
+     EXPECT_CALL(*mock_, open()).WillOnce(Return());
+     EXPECT_CALL(*mock_, isOpened()).WillOnce(Return(true));
+     EXPECT_CALL(*mock_, DataSourceTransactoPtrReturn()).WillOnce(::testing::Invoke(std::bind(create_MockDataSourceTransactor, mockDataSourceTransactor.release())));
+     EXPECT_CALL(*mock_, close()).WillOnce(Return());
 
     auto makeMock = std::bind(te::da::MockDataSource::makeMockDataSource, mock_.release());
 
@@ -417,7 +417,6 @@ void TsDataAccessorDcpToa5::TestFailDataSetInvalid()
     }
     catch(const terrama2::core::NoDataException&)
     {
-
     }
   }
   catch(...)

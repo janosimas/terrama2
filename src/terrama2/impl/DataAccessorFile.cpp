@@ -655,7 +655,12 @@ void terrama2::core::DataAccessorFile::decompressFolder(const boost::filesystem:
     if (boost::filesystem::is_regular_file(path))
       decompressFile(path, outputFolder, remover);
     else
-      decompressFolder(path, outputFolder, remover);
+    {
+      boost::filesystem::path outputDir = outputFolder;
+      outputDir /= path.filename();
+      boost::filesystem::create_directories(outputDir);
+      decompressFolder(path, outputDir, remover);
+    }
   }
 }
 
@@ -664,7 +669,7 @@ std::map<DataSetId, std::string> terrama2::core::DataAccessorFile::decompressFil
   for (auto it = uriMap.begin(); it != uriMap.end(); ++it)
   {
     boost::filesystem::path tempDir = boost::filesystem::temp_directory_path();
-    boost::filesystem::path tempTerrama(tempDir.string()+"/terrama2-unpack");
+    boost::filesystem::path tempTerrama(tempDir.string()+"/terrama2");
     boost::filesystem::path upackDir = boost::filesystem::unique_path(tempTerrama.string()+"/%%%%-%%%%-%%%%-%%%%");
     boost::filesystem::create_directories(upackDir);
 

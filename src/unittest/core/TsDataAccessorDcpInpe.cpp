@@ -295,9 +295,7 @@ void TsDataAccessorDcpInpe::TestFailDataSetInvalid()
     terrama2::core::DataProvider* dataProvider = new terrama2::core::DataProvider();
     terrama2::core::DataProviderPtr dataProviderPtr(dataProvider);
 
-    dataProvider->uri = "file://";
-    dataProvider->uri+=TERRAMA2_DATA_DIR;
-    dataProvider->uri+="/PCD_serrmar_INPE";
+    dataProvider->uri = "file://"+TERRAMA2_DATA_DIR+"/PCD_serrmar_INPE";
 
     dataProvider->intent = terrama2::core::DataProviderIntent::COLLECTOR_INTENT;
     dataProvider->dataProviderType = "FILE";
@@ -378,7 +376,7 @@ void TsDataAccessorDcpInpe::TestOK()
     //DataProvider information
     terrama2::core::DataProvider* dataProvider = new terrama2::core::DataProvider();
     terrama2::core::DataProviderPtr dataProviderPtr(dataProvider);
-    dataProvider->uri = TERRAMA2_DATA_DIR;
+    dataProvider->uri = "file://"+TERRAMA2_DATA_DIR;
 
     dataProvider->intent = terrama2::core::DataProviderIntent::COLLECTOR_INTENT;
     dataProvider->dataProviderType = "FILE";

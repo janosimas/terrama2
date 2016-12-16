@@ -67,7 +67,7 @@ int main(int argc, char** argv)
     try
     {
       TsProcessLogger testLogger;
-      ret += QTest::qExec(&testLogger, argc, argv);
+//      ret += QTest::qExec(&testLogger, argc, argv);
     }
     catch(...)
     {
@@ -77,7 +77,7 @@ int main(int argc, char** argv)
     try
     {
       TsDataRetrieverFTP testDataRetrieverFTP;
-      ret += QTest::qExec(&testDataRetrieverFTP, argc, argv);
+//      ret += QTest::qExec(&testDataRetrieverFTP, argc, argv);
     }
     catch(...)
     {
@@ -87,7 +87,7 @@ int main(int argc, char** argv)
     try
     {
       TsDataAccessorFile testDataAccessorFile;
-      ret += QTest::qExec(&testDataAccessorFile, argc, argv);
+//      ret += QTest::qExec(&testDataAccessorFile, argc, argv);
     }
     catch(...)
     {
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
     try
     {
       TsDataAccessorDcpInpe testDataAccessorDcpInpe;
-      ret += QTest::qExec(&testDataAccessorDcpInpe, argc, argv);
+//      ret += QTest::qExec(&testDataAccessorDcpInpe, argc, argv);
     }
     catch(...)
     {
@@ -107,7 +107,7 @@ int main(int argc, char** argv)
     try
     {
       TsDataAccessorDcpToa5 testDataAccessorDcpToa5;
-      ret += QTest::qExec(&testDataAccessorDcpToa5, argc, argv);
+//      ret += QTest::qExec(&testDataAccessorDcpToa5, argc, argv);
     }
     catch(...)
     {
@@ -117,7 +117,7 @@ int main(int argc, char** argv)
     try
     {
       TsDataAccessorGeoTiff testDataAccessorGeoTiff;
-      ret += QTest::qExec(&testDataAccessorGeoTiff, argc, argv);
+//      ret += QTest::qExec(&testDataAccessorGeoTiff, argc, argv);
     }
     catch(...)
     {
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
     try
     {
       TsDataAccessorOccurrenceWfp testDataAccessorOccurrenceWfp;
-      ret += QTest::qExec(&testDataAccessorOccurrenceWfp, argc, argv);
+//      ret += QTest::qExec(&testDataAccessorOccurrenceWfp, argc, argv);
     }
     catch(...)
     {
@@ -137,7 +137,7 @@ int main(int argc, char** argv)
     try
     {
       TsUtility testUtility;
-      ret += QTest::qExec(&testUtility, argc, argv);
+//      ret += QTest::qExec(&testUtility, argc, argv);
     }
     catch(...)
     {
