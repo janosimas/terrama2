@@ -53,11 +53,11 @@ namespace terrama2
     class JoinDataSet : public te::da::DataSet
     {
     public:
-      JoinDataSet(std::unique_ptr<te::da::DataSetType> ds1Type,
-                  std::unique_ptr<te::da::DataSet> ds1,
+      JoinDataSet(std::shared_ptr<te::da::DataSetType> ds1Type,
+                  std::shared_ptr<te::da::DataSet> ds1,
                   const std::string& ds1Attribute,
-                  std::unique_ptr<te::da::DataSetType> ds2Type,
-                  std::unique_ptr<te::da::DataSet> ds2,
+                  std::shared_ptr<te::da::DataSetType> ds2Type,
+                  std::shared_ptr<te::da::DataSet> ds2,
                   const std::string& ds2Attribute);
 
       virtual ~JoinDataSet() = default;
@@ -123,25 +123,25 @@ namespace terrama2
       virtual bool isNull(const std::string& name) const override;
 
     private:
-      void fillProperties(const std::unique_ptr<te::da::DataSetType>& ds1Type, const std::unique_ptr<te::da::DataSetType>& ds2Type);
-      void fillKeyMap(const std::unique_ptr<te::da::DataSet>& ds1, const std::string& ds1Attribute, const std::unique_ptr<te::da::DataSet>& ds2, const std::string& ds2Attribute);
+      void fillProperties(const std::shared_ptr<te::da::DataSetType>& ds1Type, const std::shared_ptr<te::da::DataSetType>& ds2Type);
+      void fillKeyMap(const std::shared_ptr<te::da::DataSet>& ds1, const std::string& ds1Attribute, const std::shared_ptr<te::da::DataSet>& ds2, const std::string& ds2Attribute);
 
       std::size_t getLocalPropertyPos(const std::string& name) const;
       std::size_t getPropertyPos(std::size_t i) const;
-      std::unique_ptr<te::da::DataSet>& getDataSet(std::size_t i) const;
+      std::shared_ptr<te::da::DataSet>& getDataSet(std::size_t i) const;
 
 
-      std::unique_ptr<te::da::DataSetType> ds1Type_;
+      std::shared_ptr<te::da::DataSetType> ds1Type_;
       // the mutable qualifier allow to change lines in const methods to respect the interface
-      mutable std::unique_ptr<te::da::DataSet> ds1_;
+      mutable std::shared_ptr<te::da::DataSet> ds1_;
       std::string ds1Attribute_;
-      std::unique_ptr<te::da::DataSetType> ds2Type_;
+      std::shared_ptr<te::da::DataSetType> ds2Type_;
       // the mutable qualifier allow to change lines in const methods to respect the interface
-      mutable std::unique_ptr<te::da::DataSet> ds2_;
+      mutable std::shared_ptr<te::da::DataSet> ds2_;
       std::string ds2Attribute_;
 
       std::vector<te::dt::Property*> properties_;
-      std::unique_ptr<te::da::DataSetType> dataSetType_;
+      std::shared_ptr<te::da::DataSetType> dataSetType_;
 
       std::unordered_map<std::string, int> keyLineMap_;
 

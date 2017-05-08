@@ -39,11 +39,11 @@
 
 #include <terralib/dataaccess/utils/Utils.h>
 
-terrama2::core::JoinDataSet::JoinDataSet(std::unique_ptr<te::da::DataSetType> ds1Type,
-                                         std::unique_ptr<te::da::DataSet> ds1,
+terrama2::core::JoinDataSet::JoinDataSet(std::shared_ptr<te::da::DataSetType> ds1Type,
+                                         std::shared_ptr<te::da::DataSet> ds1,
                                          const std::string& ds1Attribute,
-                                         std::unique_ptr<te::da::DataSetType> ds2Type,
-                                         std::unique_ptr<te::da::DataSet> ds2,
+                                         std::shared_ptr<te::da::DataSetType> ds2Type,
+                                         std::shared_ptr<te::da::DataSet> ds2,
                                          const std::string& ds2Attribute)
   : te::da::DataSet(),
     ds1Type_(std::move(ds1Type)),
@@ -65,7 +65,7 @@ terrama2::core::JoinDataSet::JoinDataSet(std::unique_ptr<te::da::DataSetType> ds
 }
 
 //! Fill the map of ds1Key to a ds2 line.
-void terrama2::core::JoinDataSet::fillKeyMap(const std::unique_ptr<te::da::DataSet>& ds1, const std::string& ds1Attribute, const std::unique_ptr<te::da::DataSet>& ds2, const std::string& ds2Attribute)
+void terrama2::core::JoinDataSet::fillKeyMap(const std::shared_ptr<te::da::DataSet>& ds1, const std::string& ds1Attribute, const std::shared_ptr<te::da::DataSet>& ds2, const std::string& ds2Attribute)
 {
   auto ds1Size = ds1->size();
   for(int i = 0; i < ds1Size; ++i)
@@ -91,7 +91,7 @@ void terrama2::core::JoinDataSet::fillKeyMap(const std::unique_ptr<te::da::DataS
   }
 }
 
-void terrama2::core::JoinDataSet::fillProperties(const std::unique_ptr<te::da::DataSetType>& ds1Type, const std::unique_ptr<te::da::DataSetType>& ds2Type)
+void terrama2::core::JoinDataSet::fillProperties(const std::shared_ptr<te::da::DataSetType>& ds1Type, const std::shared_ptr<te::da::DataSetType>& ds2Type)
 {
   auto ds1Properties = ds1Type->getProperties();
   auto ds2Properties = ds2Type->getProperties();
@@ -424,7 +424,7 @@ std::size_t terrama2::core::JoinDataSet::getPropertyPos(std::size_t i) const
   }
 }
 
-std::unique_ptr<te::da::DataSet>& terrama2::core::JoinDataSet::getDataSet(std::size_t i) const
+std::shared_ptr<te::da::DataSet>& terrama2::core::JoinDataSet::getDataSet(std::size_t i) const
 {
   if(i < ds1_->getNumProperties())
   {
