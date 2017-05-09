@@ -30,6 +30,7 @@
 #include "DataAccessorPostGIS.hpp"
 #include "../core/utility/Raii.hpp"
 #include "../core/utility/TimeUtils.hpp"
+#include "../core/utility/JoinDataSet.hpp"
 #include "../core/data-access/SynchronizedDataSet.hpp"
 
 // TerraLib
@@ -169,12 +170,21 @@ terrama2::core::DataSetSeries terrama2::core::DataAccessorPostGIS::getSeries(con
 
   updateLastTimestamp(dataSet, transactor);
 
+  std::shared_ptr<te::da::DataSetType> dataSetType = transactor->getDataSetType(tableName);
+  joinDataSet(tempDataSet, dataSetType);
+
   DataSetSeries series;
   series.dataSet = dataSet;
   series.syncDataSet.reset(new terrama2::core::SynchronizedDataSet(tempDataSet));
-  series.teDataSetType = transactor->getDataSetType(tableName);
+  series.teDataSetType = dataSetType;
 
   return series;
+}
+
+void terrama2::core::DataAccessorPostGIS::joinDataSet(std::shared_ptr<te::da::DataSet>& tempDataSet, std::shared_ptr<te::da::DataSetType>& dataSetType) const
+{
+  //TODO: use JoinDataSet 
+
 }
 
 std::string terrama2::core::DataAccessorPostGIS::getDataSetTableName(DataSetPtr dataSet) const

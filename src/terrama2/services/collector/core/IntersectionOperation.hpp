@@ -82,12 +82,10 @@ namespace terrama2
          \brief Creates a DataSetType with the attributes from the collected dataset plus the attributes configured in the intersection.
 
          \param collectedDST DataSetType of the collected DataSet.
-         \param intersectionDST DataSetType of the intersection DataSet.
          \param intersectionDSProperties Vector of properties to be added to the collected DataSet.
          \return A DataSetType with the attributes from the collected dataset plus the attributes configured in the intersection.
          */
         te::da::DataSetType* createDataSetType(te::da::DataSetType* collectedDST,
-                                               te::da::DataSetType* intersectionDST,
                                                std::vector<te::dt::Property*> intersectionDSProperties);
 
         /*!

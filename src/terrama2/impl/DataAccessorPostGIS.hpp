@@ -91,6 +91,8 @@ namespace terrama2
                                         const terrama2::core::Filter& filter,
                                         std::string whereCondition) const;
 
+        virtual void joinDataSet(std::shared_ptr<te::da::DataSet>& tempDataSet, std::shared_ptr<te::da::DataSetType>& dataSetType) const;
+
 
         virtual void updateLastTimestamp(DataSetPtr dataSet, std::shared_ptr<te::da::DataSourceTransactor> transactor) const;
     };

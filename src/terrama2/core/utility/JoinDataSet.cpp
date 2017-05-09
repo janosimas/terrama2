@@ -62,6 +62,8 @@ terrama2::core::JoinDataSet::JoinDataSet(std::shared_ptr<te::da::DataSetType> ds
 
   fillProperties(ds1Type_, ds2Type_);
   fillKeyMap(ds1_, ds1Attribute_, ds2_, ds2Attribute_);
+
+  dataSetType_ = std::make_shared<te::da::DataSetType>(ds1Type_->getName());
 }
 
 //! Fill the map of ds1Key to a ds2 line.

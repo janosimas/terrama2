@@ -213,7 +213,7 @@ terrama2::core::DataSetSeries terrama2::services::collector::core::processVector
 
     // Create the DataSetType and DataSet
 
-    outputDt.reset(createDataSetType(collectedDataSetType.get(), interDsType.get(), interProperties));
+    outputDt.reset(createDataSetType(collectedDataSetType.get(), interProperties));
     outputDs.reset(new te::mem::DataSet(outputDt.get()));
 
     // Creates a rtree with all occurrences
@@ -302,7 +302,6 @@ terrama2::core::DataSetSeries terrama2::services::collector::core::processVector
 }
 
 te::da::DataSetType* terrama2::services::collector::core::createDataSetType(te::da::DataSetType* collectedDST,
-    te::da::DataSetType* intersectionDST,
     std::vector<te::dt::Property*> intersectionDSProperties)
 {
   te::da::DataSetType* outputDt = new te::da::DataSetType(collectedDST->getName());
