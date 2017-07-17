@@ -51,14 +51,14 @@ terrama2::services::alert::core::AlertPtr terrama2::services::alert::core::fromA
        && json.contains("project_id")
        && json.contains("service_instance_id")
        && json.contains("data_series_id")
-       && json.contains("risk_attribute")
+       && json.contains("legend_attribute")
        && json.contains("active")
        && json.contains("name")
        && json.contains("description")
 //       && json.contains("schedule")
 //       && json.contains("filter")
        && json.contains("additional_data")
-       && json.contains("risk")
+       && json.contains("legend_id")
        && json.contains("notifications")))
   {
     QString errMsg = QObject::tr("Invalid Alert JSON object.");
@@ -74,7 +74,7 @@ terrama2::services::alert::core::AlertPtr terrama2::services::alert::core::fromA
   alert->projectId = static_cast<uint32_t>(json["project_id"].toInt());
   alert->serviceInstanceId = static_cast<uint32_t>(json["service_instance_id"].toInt());
   alert->dataSeriesId = static_cast<uint32_t>(json["data_series_id"].toInt());
-  alert->riskAttribute = json["risk_attribute"].toString().toStdString();
+  alert->riskAttribute = json["legend_attribute"].toString().toStdString();
   alert->active = json["active"].toBool();
   alert->name = json["name"].toString().toStdString();
   alert->description = json["description"].toString().toStdString();
@@ -96,7 +96,14 @@ terrama2::services::alert::core::AlertPtr terrama2::services::alert::core::fromA
     for(const auto& tempAttribute : attributesArray)
       attributes.push_back(tempAttribute.toString().toStdString());
 
-    alert->additionalDataVector.push_back({id, datasetid, referrerAttribute, referredAttribute, attributes});
+    AdditionalData additionalData;
+    additionalData.dataSeriesId = id;
+    additionalData.dataSetId = datasetid;
+    additionalData.referrerAttribute = referrerAttribute;
+    additionalData.referredAttribute = referredAttribute;
+    additionalData.attributes = attributes;
+
+    alert->additionalDataVector.push_back(additionalData);
   }
 
   auto reportMetadata = json["report_metadata"].toObject();
@@ -109,7 +116,7 @@ terrama2::services::alert::core::AlertPtr terrama2::services::alert::core::fromA
   alert->reportMetadata[terrama2::services::alert::core::ReportTags::TIMESTAMP_FORMAT] = reportMetadata[QString::fromStdString(terrama2::services::alert::core::ReportTags::TIMESTAMP_FORMAT)].toString().toStdString();
   alert->reportMetadata[terrama2::services::alert::core::ReportTags::LOGO_PATH] = reportMetadata[QString::fromStdString(terrama2::services::alert::core::ReportTags::LOGO_PATH)].toString().toStdString();
 
-  alert->risk = terrama2::core::fromRiskJson(json["risk"].toObject());
+  alert->riskId = static_cast<uint32_t>(json["legend_id"].toInt());
 
   auto recipientsArray = json["notifications"].toArray();
   for(const auto& tempRecipient : recipientsArray)
@@ -141,7 +148,7 @@ QJsonObject terrama2::services::alert::core::toJson(AlertPtr alert)
   obj.insert("name", QString::fromStdString(alert->name));
   obj.insert("description", QString::fromStdString(alert->description));
 
-  obj.insert("risk", toJson(alert->risk));
+  obj.insert("legend_id", static_cast<int>(alert->riskId));
   obj.insert("schedule", toJson(alert->schedule));
   obj.insert("filter", toJson(alert->filter));
 

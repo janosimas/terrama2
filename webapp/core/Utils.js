@@ -11,6 +11,8 @@ var Signals = require('./Signals');
 var Promise = require("bluebird");
 var util = require('util');
 var isEqual = require('lodash').isEqual;
+var fs = require('fs');
+var rimraf = require('rimraf');
 /**
  * Encrypt/Decrypt module
  * @type {bcrypt}
@@ -273,14 +275,22 @@ var Utils = module.exports = {
                   alertsArr.push(alert.toService());
                 });
 
-                return resolve({
-                  "Analysis": analysisArr,
-                  "DataSeries": series,
-                  "DataProviders": providers,
-                  "Collectors": collectors,
-                  "Views": viewsArr,
-                  "Alerts": alertsArr
-                });
+                DataManager.listLegends().then(function(legends){
+                  var legendsArr = [];
+                  legends.forEach(function(legend){
+                    legendsArr.push(legend.toService());
+                  });
+
+                  return resolve({
+                    "Analysis": analysisArr,
+                    "DataSeries": series,
+                    "DataProviders": providers,
+                    "Collectors": collectors,
+                    "Views": viewsArr,
+                    "Alerts": alertsArr,
+                    "Legends": legendsArr
+                  });
+                }).catch(_handleError); // end listLegends
               }).catch(_handleError); // end listAlerts
             }).catch(_handleError); // end views
           }).catch(_handleError); // end listAnalysis
@@ -803,5 +813,45 @@ var Utils = module.exports = {
       key: "folder",
       htmlClass: "col-md-6 col-sm-12 terrama2-schema-form"
     };
+  },
+
+  /**
+   * Verifies if a string exists in an array.
+   * @param {array} array - Array where the search will be performed
+   * @param {string} string - String to be searched
+   * @returns {boolean} boolean - Flag that indicates if the string exists in the array
+   *
+   * @function stringInArray
+   * @memberof Utils
+   * @inner
+   */
+  stringInArray: function(array, string) {
+    if(array !== null) {
+      for(var i = 0, arrayLength = array.length; i < arrayLength; i++) {
+        if(array[i].toString() === string.toString())
+          return true;
+      }
+    }
+
+    return false;
+  },
+
+  /**
+   * Deletes a folder and all its content.
+   * @param {string} path - Path to the folder
+   * @param {function} callback - Callback function
+   *
+   * @function deleteFolderRecursively
+   * @memberof Utils
+   * @inner
+   */
+  deleteFolderRecursively: function(path, callback) {
+    if(fs.existsSync(path)) {
+      try {
+        rimraf(path, callback);
+      } catch(e) {
+        console.log(e);
+      }
+    }
   }
 };

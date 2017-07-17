@@ -10,7 +10,11 @@ module.exports = function(sequelize, DataTypes) {
       active: DataTypes.BOOLEAN,
       name: DataTypes.STRING,
       description: DataTypes.TEXT,
-      risk_attribute: DataTypes.STRING
+      legend_attribute: DataTypes.STRING,
+      schedule_type: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+      }
     },
     {
       underscored: true,
@@ -44,19 +48,36 @@ module.exports = function(sequelize, DataTypes) {
             }
           });
 
-          Alert.belongsTo(models.ConditionalSchedule, {
+          Alert.belongsTo(models.Schedule, {
             onDelete: "CASCADE",
             foreignKey: {
-              name: 'conditional_schedule_id',
+              name: "schedule_id",
+              allowNull: true,
+              constraints: true
+            }
+          });
+
+          Alert.belongsTo(models.AutomaticSchedule, {
+            onDelete: "CASCADE",
+            foreignKey: {
+              name: 'automatic_schedule_id',
+              allowNull: true
+            }
+          });
+
+          Alert.belongsTo(models.Legend, {
+            onDelete: "NO ACTION",
+            foreignKey: {
+              name: 'legend_id',
               allowNull: false
             }
           });
 
-          Alert.belongsTo(models.Risk, {
+          Alert.belongsTo(models.View, {
             onDelete: "CASCADE",
             foreignKey: {
-              name: 'risk_id',
-              allowNull: false
+              name: 'view_id',
+              allowNull: true
             }
           });
 

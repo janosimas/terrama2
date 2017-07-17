@@ -236,6 +236,8 @@ void terrama2::core::Service::processingTaskThread() noexcept
 
 void terrama2::core::Service::updateNumberOfThreads(size_t numberOfThreads) noexcept
 {
+  numberOfThreads = verifyNumberOfThreads(numberOfThreads);
+
   //service not runnig, start service with numberOfThreads threads
   if(!mainLoopThread_.valid())
   {
@@ -245,8 +247,7 @@ void terrama2::core::Service::updateNumberOfThreads(size_t numberOfThreads) noex
 
   std::unique_lock<std::mutex> lock(mutex_);
   TERRAMA2_LOG_DEBUG() << tr("Old number of threads: %1").arg(processingThreadPool_.size());
-
-  numberOfThreads = verifyNumberOfThreads(numberOfThreads);
+  
   //same number of threads, nothing to do
   if(numberOfThreads == processingThreadPool_.size())
     return;
@@ -277,9 +278,9 @@ terrama2::core::TimerPtr terrama2::core::Service::createTimer(const Schedule& sc
 
 void terrama2::core::Service::sendProcessFinishedSignal(const ProcessId processId, std::shared_ptr<te::dt::TimeInstantTZ> executionDate, const bool success, QJsonObject jsonAnswer)
 {
-  jsonAnswer.insert("process_id", static_cast<int>(processId));
-  jsonAnswer.insert("result", success);
-  jsonAnswer.insert("execution_date", QString::fromStdString(executionDate->toString()));
+  jsonAnswer.insert(ReturnTags::PROCESS_ID, static_cast<int>(processId));
+  jsonAnswer.insert(ReturnTags::RESULT, success);
+  jsonAnswer.insert(ReturnTags::EXECUTION_DATE, QString::fromStdString(executionDate->toString()));
 
   emit processFinishedSignal(jsonAnswer);
 }

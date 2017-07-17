@@ -45,22 +45,36 @@ namespace terrama2
 {
   namespace core
   {
+    /*!
+      \brief DataStoragerTiff Class to create raster tif files.
+    */
     class DataStoragerTiff : public DataStorager
     {
       public:
-        DataStoragerTiff(DataProviderPtr outputDataProvider)
-                : DataStorager(outputDataProvider) {}
+        DataStoragerTiff(DataSeriesPtr dataSeries, DataProviderPtr outputDataProvider)
+                : DataStorager(dataSeries, outputDataProvider) {}
         ~DataStoragerTiff() {}
 
-        static DataStoragerPtr make(DataProviderPtr dataProvider);
-        static DataStoragerType dataStoragerType() { return "GDAL"; }
+        static DataStoragerPtr make(DataSeriesPtr dataSeries, DataProviderPtr dataProvider);
+        static DataStoragerType dataStoragerType() { return "GRID-geotiff"; }
 
+        /*!
+          \brief Create a raster file for each raster in the series.
+
+          The mask will be replaced by the timestamp in the timestamp attribute.
+
+          The file extension should be '.tif', if not it'll append '.tif' at the and of the filename.
+        */
         virtual void store(DataSetSeries series, DataSetPtr outputDataSet) const override;
 
+        /*!
+          \brief Return the complete uri of the dataset.
+
+          The uri is composed by the dataProvider_, the dataset folder and the dataset mask.
+        */
         virtual std::string getCompleteURI(DataSetPtr outputDataSet) const override;
 
       protected:
-        std::string getMask(DataSetPtr dataSet) const;
         int getSRID(DataSetPtr dataSet, bool log) const;
         std::string getTimezone(DataSetPtr dataSet, bool logError = true) const;
         std::string zeroPadNumber(long num, int size) const;

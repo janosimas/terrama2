@@ -33,9 +33,8 @@
 #include "MemoryDataSetLayer.hpp"
 #include "Utils.hpp"
 #include "MapsServerFactory.hpp"
-
 #include "data-access/Geoserver.hpp"
-
+#include "data-access/Exception.hpp"
 #include "../../../core/Shared.hpp"
 #include "../../../core/utility/TimeUtils.hpp"
 
@@ -73,7 +72,9 @@ void terrama2::services::view::core::Service::prepareTask(const terrama2::core::
 {
   try
   {
-    taskQueue_.emplace(std::bind(&Service::viewJob, this, executionPackage, std::dynamic_pointer_cast<terrama2::services::view::core::ViewLogger>(logger_->clone()), dataManager_));
+    auto viewLogger = std::dynamic_pointer_cast<ViewLogger>(logger_->clone());
+    assert(viewLogger);
+    taskQueue_.emplace(std::bind(&Service::viewJob, this, executionPackage, viewLogger, dataManager_));
   }
   catch(const std::exception& e)
   {
@@ -143,8 +144,7 @@ void terrama2::services::view::core::Service::removeView(ViewId viewId) noexcept
   {
     std::lock_guard<std::mutex> lock(mutex_);
 
-
-    TERRAMA2_LOG_INFO() << tr("Removing view %1.").arg(viewId);
+    TERRAMA2_LOG_INFO() << tr("Trying to remove view %1.").arg(viewId);
 
     auto it = timers_.find(viewId);
     if(it != timers_.end())
@@ -159,8 +159,23 @@ void terrama2::services::view::core::Service::removeView(ViewId viewId) noexcept
                                        [viewId](const terrama2::core::ExecutionPackage& executionPackage)
                                        { return viewId == executionPackage.processId; }), processQueue_.end());
 
-    waitQueue_.erase(viewId);
+    // removing from geoserver
+    try
+    {
+      MapsServerPtr mapsServer = MapsServerFactory::getInstance().make(mapsServerUri_, "GEOSERVER");
+      mapsServer->cleanup(viewId);
+    }
+    catch(const terrama2::services::view::core::NotFoundGeoserverException& e)
+    {
+      // Nothing
+      TERRAMA2_LOG_DEBUG() << tr("There is no workspace in GeoServer");
+    }
+    catch(const terrama2::services::view::core::ViewGeoserverException&)
+    {
+      TERRAMA2_LOG_WARNING() << tr("Could not remove GeoServer workspace. Please remove it manually");
+    }
 
+    waitQueue_.erase(viewId);
 
     TERRAMA2_LOG_INFO() << tr("View %1 removed successfully.").arg(viewId);
   }
@@ -258,14 +273,32 @@ void terrama2::services::view::core::Service::viewJob(const terrama2::core::Exec
   }
   catch(const terrama2::core::LogException& e)
   {
-    std::string errMsg = boost::get_error_info<terrama2::ErrorDescription>(e)->toStdString();
-    TERRAMA2_LOG_ERROR() << errMsg << std::endl;
+    auto error = boost::get_error_info<terrama2::ErrorDescription>(e);
+    std::string errMsg;
+    if(error)
+    {
+      errMsg = error->toStdString();
+      TERRAMA2_LOG_ERROR() << errMsg;
+    }
+    else
+    {
+      TERRAMA2_LOG_ERROR() << QObject::tr("Error logging view build error.");
+    }
     TERRAMA2_LOG_INFO() << QObject::tr("Build of view %1(%2) finished with error(s).").arg(QString::fromStdString(viewName)).arg(viewId);
   }
   catch(const terrama2::Exception& e)
   {
-    std::string errMsg = boost::get_error_info<terrama2::ErrorDescription>(e)->toStdString();
-    TERRAMA2_LOG_ERROR() << errMsg << std::endl;
+    auto error = boost::get_error_info<terrama2::ErrorDescription>(e);
+    std::string errMsg;
+    if(error)
+    {
+      errMsg = error->toStdString();
+      TERRAMA2_LOG_ERROR() << errMsg;
+    }
+    else
+    {
+      TERRAMA2_LOG_ERROR() << QObject::tr("Error logging view build error.");
+    }
     TERRAMA2_LOG_INFO() << QObject::tr("Build of view %1(%2) finished with error(s).").arg(QString::fromStdString(viewName)).arg(viewId);
 
     if(logId != 0)
@@ -273,8 +306,17 @@ void terrama2::services::view::core::Service::viewJob(const terrama2::core::Exec
   }
   catch(const boost::exception& e)
   {
-    std::string errMsg = boost::get_error_info<terrama2::ErrorDescription>(e)->toStdString();
-    TERRAMA2_LOG_ERROR() << errMsg;
+    auto error = boost::get_error_info<terrama2::ErrorDescription>(e);
+    std::string errMsg;
+    if(error)
+    {
+      errMsg = error->toStdString();
+      TERRAMA2_LOG_ERROR() << errMsg;
+    }
+    else
+    {
+      TERRAMA2_LOG_ERROR() << QObject::tr("Error logging view build error.");
+    }
     TERRAMA2_LOG_INFO() << QObject::tr("Build of view %1(%2) finished with error(s).").arg(QString::fromStdString(viewName)).arg(viewId);
 
     if(logId != 0)

@@ -8,8 +8,11 @@
  * @type {AbstractData}
  */
 var BaseClass = require('./AbstractData');
-var ConditionalSchedule = require("./ConditionalSchedule");
-var Risk = require("./Risk");
+var AutomaticSchedule = require("./AutomaticSchedule");
+var Legend = require("./Legend");
+var View = require("./View");
+var ViewStyleLegend = require("./ViewStyleLegend");
+var DataSeries = require("./DataSeries");
 /**
  * TerraMA² Global Utility module
  * @type {Utils}
@@ -54,25 +57,42 @@ var Alert = function(params) {
    */
   this.description = params.description;
   /**
-   * @name Alert#risk_attribute
+   * @name Alert#legend_attribute
    * @type {string}
    */
-  this.risk_attribute = params.risk_attribute;
+  this.legend_attribute = params.legend_attribute;
   /**
    * @name Alert#data_series_id
    * @type {string}
    */
   this.data_series_id = params.data_series_id;
   /**
-   * @name Alert#conditional_schedule
-   * @type {object}
+   * Schedule type associated
+   * @name Alert#schedule_type
+   * @type {Schedule}
    */
-  this.conditional_schedule = new ConditionalSchedule(params.ConditionalSchedule ? params.ConditionalSchedule.get() : params.conditionalSchedule || {});
+  this.scheduleType = params.schedule_type;
   /**
-   * @name Alert#risk
+   * Schedule associated
+   * @name Alert#schedule
+   * @type {Schedule}
+   */
+  this.schedule = params.schedule || {};
+  /**
+   * @name Alert#automatic_schedule
    * @type {object}
    */
-  this.risk = new Risk(params.Risk ? params.Risk.get() : params.risk || {});
+  this.automatic_schedule = new AutomaticSchedule(params.AutomaticSchedule ? params.AutomaticSchedule.get() : params.automaticSchedule || {});
+  /**
+   * @name Alert#legend
+   * @type {object}
+   */
+  this.legend = new Legend(params.Legend ? params.Legend.get() : params.legend || {});
+  /**
+   * @name Alert#dataSeries
+   * @type {object}
+   */
+  this.dataSeries = params.DataSeries || params.dataSeries ? new DataSeries(params.DataSeries || params.dataSeries) : null;
 
   /**
    * @name Alert#report_metadata
@@ -91,18 +111,31 @@ var Alert = function(params) {
    * @type {object}
    */
   this.notifications = params.notifications || [];
-  
+
+  /**
+   * @name Alert#view
+   * @type {object}
+   */
+  this.view = new View(params.View ? params.View.get() : params.view || {});
+
+  if (params.View && params.View.ViewStyleLegend){
+    var legendModel = new ViewStyleLegend(Utils.extend(
+      params.View.ViewStyleLegend.get(), {colors: params.View.ViewStyleLegend.ViewStyleColors ? params.View.ViewStyleLegend.ViewStyleColors.map(function(elm) { return elm.get(); }) : []}));
+    legendModel.setMetadata(Utils.formatMetadataFromDB(params.View.ViewStyleLegend.ViewStyleLegendMetadata));
+    this.view.setLegend(legendModel);
+  }
+
 };
 
 /**
- * It sets conditional schedule data.
+ * It sets automatic schedule data.
  * @param {Sequelize.Model[]|Object[]}
  */
-Alert.prototype.setConditionalSchedule = function(conditionalSchedule) {
-  if (conditionalSchedule.ConditionalSchedule) {
-    this.conditional_schedule = new ConditionalSchedule(conditionalSchedule.ConditionalSchedule.get() || {});
+Alert.prototype.setAutomaticSchedule = function(automaticSchedule) {
+  if (automaticSchedule.AutomaticSchedule) {
+    this.automatic_schedule = new AutomaticSchedule(automaticSchedule.AutomaticSchedule.get() || {});
   } else {
-    this.conditional_schedule = conditionalSchedule || {};
+    this.automatic_schedule = automaticSchedule || {};
   }
 };
 
@@ -151,12 +184,16 @@ Alert.prototype.toObject = function() {
     name: this.name,
     description: this.description,
     data_series_id: this.data_series_id,
-    risk_attribute: this.risk_attribute,
-    conditional_schedule: this.conditional_schedule instanceof BaseClass ? this.conditional_schedule.toObject() : this.conditional_schedule,
-    risk: this.risk instanceof BaseClass ? this.risk.toObject() : this.risk,
+    legend_attribute: this.legend_attribute,
+    schedule_type: this.scheduleType,
+    schedule: this.schedule instanceof BaseClass ? this.schedule.toObject() : {},
+    automatic_schedule: this.automatic_schedule instanceof BaseClass ? this.automatic_schedule.toObject() : this.automatic_schedule,
+    legend: this.legend instanceof BaseClass ? this.legend.toObject() : this.legend,
+    dataSeries: this.dataSeries instanceof BaseClass ? this.dataSeries.toObject() : this.dataSeries,
     additional_data: this.additional_data,
     notifications: this.notifications,
-    report_metadata: this.report_metadata
+    report_metadata: this.report_metadata,
+    view: this.view instanceof BaseClass ? this.view.toObject() : this.view,
   });
 };
 
@@ -199,11 +236,12 @@ Alert.prototype.toService = function() {
     name: this.name,
     description: this.description,
     data_series_id: this.data_series_id,
-    risk_attribute: this.risk_attribute,
-    risk: this.risk instanceof BaseClass ? this.risk.toService() : this.risk,
+    legend_attribute: this.legend_attribute,
+    legend_id: this.legend.id,
     additional_data: additionalDataList,
     notifications: notificationList,
-    report_metadata: reportMetadataCopy
+    report_metadata: reportMetadataCopy,
+    schedule: this.schedule instanceof BaseClass ? this.schedule.toObject() : {}
   });
 }
 

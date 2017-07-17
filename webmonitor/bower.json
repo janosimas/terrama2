@@ -14,6 +14,7 @@
   "dependencies": {
     "angular": "1.5.x",
     "angular-route": "1.5.x",
+    "datatables": "^1.10.12",
     "jquery": "2.1.4",
     "bootstrap": "^3.3.7",
     "AdminLTE": "admin-lte#^2.3.6",
@@ -21,6 +22,7 @@
     "jquery-ui": "^1.12.1",
     "ol3": "ol3-bower#^3.18.2",
     "moment": "^2.15.1",
-    "bootstrap-daterangepicker": "^2.1.24"
+    "bootstrap-daterangepicker": "^2.1.24",
+    "almond": "^0.3.3"
   }
 }

@@ -114,7 +114,7 @@ define(
      * Updates the opacity of the layer, allowed values range from 0 to 1.
      * @param {string} layerId - Layer id
      * @param {number} opacityValue = Opacity value to set in layer
-     * 
+     *
      * @function updateLayerOpacity
      * @memberof MapDisplay
      * @inner
@@ -127,7 +127,7 @@ define(
     /**
      * Get the opacity of the layer.
      * @param {string} layerId - Layer id
-     * 
+     *
      * @function getLayerOpacity
      * @memberof MapDisplay
      * @inner
@@ -511,6 +511,84 @@ define(
         tile.setMaxResolution(params.maxResolution);
 
       return tile;
+    }; 
+
+    /**
+     * Creates a new image wms layer.
+     * @param {string} layerId - Layer id
+     * @param {string} layerName - Layer name
+     * @param {string} layerTitle - Layer title
+     * @param {string} url - Url to the wms layer
+     * @param {string} type - Server type
+     * @param {boolean} layerVisible - Flag that indicates if the layer should be visible on the map when created
+     * @param {boolean} disabled - Flag that indicates if the layer should be disabled in the layer explorer when created
+     * @param {object} params - Optional parameters, there are the following items:
+     *    {float} minResolution - Layer minimum resolution,
+     *    {float} maxResolution - Layer maximum resolution,
+     *    {string} time - Time parameter for temporal layers,
+     *    {integer} buffer - Buffer of additional border pixels that are used in the GetMap and GetFeatureInfo operations,
+     *    {string} version - WMS version,
+     *    {string} format - Layer format,
+     *    {object} tileGrid - Grid pattern for accessing the tiles
+     *    {object} sourceParams - Layer source parameters
+     * @returns {ol.layer.Image} tile - New image wms layer
+     *
+     * @private
+     * @function createImageWMSLayer
+     * @memberof MapDisplay
+     * @inner
+     */
+
+    var createImageWMSLayer = function(layerId, layerName, layerTitle, url, type, layerVisible, disabled, params) {
+      params = params !== undefined && params !== null ? params : {};
+
+      var sourceParams = params.sourceParams !== undefined && params.sourceParams !== null ? params.sourceParams : {};
+
+      sourceParams['LAYERS'] = layerId;
+
+      if(params.time !== undefined && params.time !== null && params.time !== '')
+        sourceParams['TIME'] = params.time;
+
+      if(params.buffer !== undefined && params.buffer !== null && params.buffer !== '')
+        sourceParams['BUFFER'] = params.buffer;
+
+      if(params.version !== undefined && params.version !== null && params.version !== '')
+        sourceParams['VERSION'] = params.version;
+
+      if(params.format !== undefined && params.format !== null && params.format !== '')
+        sourceParams['FORMAT'] = params.format;
+
+      var layerSourceOptions = {
+        url: url,
+        serverType: type,
+        params: sourceParams
+      };
+
+      var layerSource = new ol.source.ImageWMS(layerSourceOptions);
+
+      if(memberLayersStartLoadingFunction !== null && memberLayersEndLoadingFunction !== null) {
+        layerSource.on('imageloadstart', function() { increaseLoading(layerId); });
+        layerSource.on('imageloadend', function() { increaseLoaded(layerId); });
+        layerSource.on('imageloaderror', function() { increaseLoaded(layerId); });
+      }
+
+      var image = new ol.layer.Image({
+        source: layerSource,
+        id: layerId,
+        name: layerName,
+        title: layerTitle,
+        visible: layerVisible,
+        preload: Infinity,
+        disabled: disabled
+      });
+
+      if(params.minResolution !== undefined && params.minResolution !== null)
+        tile.setMinResolution(params.minResolution);
+
+      if(params.maxResolution !== undefined && params.maxResolution !== null)
+        tile.setMaxResolution(params.maxResolution);
+
+      return image;
     };
 
     /**
@@ -679,6 +757,48 @@ define(
 
         layers.push(
           createTileWMSLayer(layerId, layerName, layerTitle, url, type, layerVisible, disabled, params)
+        );
+
+        layerGroup.setLayers(layers);
+      }
+
+      return layerGroupExists;
+    };
+
+    /**
+     * Adds a new image wms layer to the map.
+     * @param {string} layerId - Layer id
+     * @param {string} layerName - Layer name
+     * @param {string} layerTitle - Layer title
+     * @param {string} url - Url to the wms layer
+     * @param {string} type - Server type
+     * @param {boolean} layerVisible - Flag that indicates if the layer should be visible on the map when created
+     * @param {boolean} disabled - Flag that indicates if the layer should be disabled in the layer explorer when created
+     * @param {string} parentGroup - Parent group id
+     * @param {object} params - Optional parameters, there are the following items:
+     *    {float} minResolution - Layer minimum resolution,
+     *    {float} maxResolution - Layer maximum resolution,
+     *    {string} time - Time parameter for temporal layers,
+     *    {integer} buffer - Buffer of additional border pixels that are used in the GetMap and GetFeatureInfo operations,
+     *    {string} version - WMS version,
+     *    {string} format - Layer format,
+     *    {object} tileGrid - Grid pattern for accessing the tiles
+     *    {object} sourceParams - Layer source parameters
+     * @returns {boolean} layerGroupExists - Indicates if the layer group exists
+     *
+     * @function addImageWMSLayer
+     * @memberof MapDisplay
+     * @inner
+     */
+    var addImageWMSLayer = function(layerId, layerName, layerTitle, url, type, layerVisible, disabled, parentGroup, params) {
+      var layerGroup = findBy(memberOlMap.getLayerGroup(), 'id', parentGroup);
+      var layerGroupExists = layerGroup !== null;
+
+      if(layerGroupExists) {
+        var layers = layerGroup.getLayers();
+
+        layers.push(
+          createImageWMSLayer(layerId, layerName, layerTitle, url, type, layerVisible, disabled, params)
         );
 
         layerGroup.setLayers(layers);
@@ -1334,16 +1454,24 @@ define(
     var setGetFeatureInfoUrlOnClick = function(layerId, callback) {
       unsetMapSingleClickEvent();
       setMapSingleClickEvent(function(longitude, latitude) {
-        var source = findBy(memberOlMap.getLayerGroup(), 'id', layerId).getSource();
-        var coordinate = [longitude, latitude];
-        var resolution = memberOlMap.getView().getResolution();
-        var projection = 'EPSG:4326';
-        var params = { 'INFO_FORMAT': 'application/json' };
+        var layer = findBy(memberOlMap.getLayerGroup(), 'id', layerId);
 
-        var url = source.getGetFeatureInfoUrl(coordinate, resolution, projection, params);
+        if(layer !== null) {
+          var source = layer.getSource();
+          var coordinate = [longitude, latitude];
+          var resolution = memberOlMap.getView().getResolution();
+          var projection = 'EPSG:4326';
+          var params = { 'INFO_FORMAT': 'application/json' };
 
-        if(url) callback(url);
-        else callback(null);
+          try {
+            var url = source.getGetFeatureInfoUrl(coordinate, resolution, projection, params);
+          } catch(e) {
+            var url = null;
+          }
+
+          if(url) callback(url);
+          else callback(null);
+        } else callback(null);
       });
     };
 
@@ -1356,6 +1484,48 @@ define(
      */
     var unsetGetFeatureInfoUrlOnClick = function() {
       unsetMapSingleClickEvent();
+    };
+
+    /**
+     * Sets a property of a given layer, with a given property key and value.
+     * @param {string} layerId - Layer id
+     * @param {string} property - Property key
+     * @param {string} value - Property value
+     *
+     * @function setLayerProperty
+     * @memberof MapDisplay
+     * @inner
+     */
+    var setLayerProperty = function(layerId, property, value) {
+      var layer = findBy(memberOlMap.getLayerGroup(), 'id', layerId);
+
+      try {
+        layer.set(property, value);
+      } catch(e) {
+        console.error("TerraMA2WebComponents: Layer '" + layerId + "' not found!");
+      }
+    };
+
+    /**
+     * Returns the property of a given layer and property key.
+     * @param {string} layerId - Layer id
+     * @param {string} property - Property key
+     * @returns {string} value - Property value
+     *
+     * @function getLayerProperty
+     * @memberof MapDisplay
+     * @inner
+     */
+    var getLayerProperty = function(layerId, property) {
+      var layer = findBy(memberOlMap.getLayerGroup(), 'id', layerId);
+
+      try {
+        var value = layer.get(property);
+      } catch(e) {
+        var value = null;
+      }
+
+      return value;
     };
 
     /**
@@ -1396,7 +1566,7 @@ define(
      * @inner
      */
     var applyCQLFilter = function(cql, layerId) {
-      findBy(memberOlMap.getLayerGroup(), 'id', layerId).getSource().updateParams({ "CQL_FILTER": cql });
+      findBy(memberOlMap.getLayerGroup(), 'id', layerId).getSource().updateParams({ "CQL_FILTER": (cql == "" ? null : cql) });
     };
 
     /**
@@ -1454,6 +1624,7 @@ define(
       disableDoubleClickZoom: disableDoubleClickZoom,
       addLayerGroup: addLayerGroup,
       updateLayerTime: updateLayerTime,
+      addImageWMSLayer: addImageWMSLayer,
       addTileWMSLayer: addTileWMSLayer,
       addWMTSLayer: addWMTSLayer,
       addBingMapsLayer: addBingMapsLayer,
@@ -1482,6 +1653,8 @@ define(
       unsetMapSingleClickEvent: unsetMapSingleClickEvent,
       setGetFeatureInfoUrlOnClick: setGetFeatureInfoUrlOnClick,
       unsetGetFeatureInfoUrlOnClick: unsetGetFeatureInfoUrlOnClick,
+      setLayerProperty: setLayerProperty,
+      getLayerProperty: getLayerProperty,
       findBy: findBy,
       applyCQLFilter: applyCQLFilter,
       alterLayerIndex: alterLayerIndex,

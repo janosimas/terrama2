@@ -1,13 +1,13 @@
 define([], function(){
   /**
    * It defines a Component structure for handling Store form on Dynamic data registration
-   * 
+   *
    * @property {Object} bindings - Defines component bindings to work
    * @type {angular.IComponent}
    */
     var terrama2StoragerComponent = {
         bindings: {
-            providersList: "<", 
+            providersList: "<",
             storager: "<",
             series: "<",
             filter: "<",
@@ -26,7 +26,7 @@ define([], function(){
 
   /**
    * It handles component behavior
-   * 
+   *
    * @param {any} i18n - TerraMA² Internationalization module
    */
     function StoragerController($scope, i18n, DataSeriesSemanticsService, GeoLibs, SemanticsParserFactory, $timeout, $window, Service, $http, $compile, FormTranslator){
@@ -47,7 +47,7 @@ define([], function(){
       self.tableNameValidationRegex = "^[a-zA-Z_][a-zA-Z0-9_]*$";
 
       self.services = [];
-      
+
       self.services = Service.list({service_type_id: globals.enums.ServiceType.COLLECTOR});
 
       self.getImageUrl = getImageUrl;
@@ -67,6 +67,9 @@ define([], function(){
             break;
           case 'FTP':
             return BASE_URL + "images/data-server/ftp/ftp.png";
+            break;
+          case 'SFTP':
+            return BASE_URL + "images/data-server/sftp/sftp.png";
             break;
           case 'FILE':
           default:
@@ -111,12 +114,6 @@ define([], function(){
         // Setting storage formats based in input data series
         self.dataSeriesSemantics.forEach(function(dSemantics) {
           if (dSemantics.data_series_type_name === self.series.semantics.data_series_type_name) {
-            if (self.series.semantics.data_series_type_name == "OCCURRENCE" && dSemantics.code == "OCCURRENCE-wfp"){
-              return;
-            }
-            if (self.series.semantics.data_series_type_name == "DCP" && dSemantics.data_format_name !== "POSTGIS"){
-              return;
-            }
             self.storagerFormats.push(Object.assign({}, dSemantics));
           }
         });
@@ -564,6 +561,15 @@ define([], function(){
         } else {
           var copyFormat = angular.merge({}, self.series.semantics.metadata.metadata);
           angular.merge(copyFormat, self.model);
+          // if geotiff - add .tif extension
+          if (self.series.semantics.code == "GRID-geotiff"){
+            if (!copyFormat.mask.endsWith(".tif")){
+              if (copyFormat.mask.indexOf(".") > -1){
+                copyFormat.mask = copyFormat.mask.slice(0, copyFormat.mask.indexOf("."));
+              }
+              copyFormat.mask += ".tif";
+            }
+          }
           self.modelStorager = SemanticsParserFactory.parseKeys(copyFormat);
           self.filter.area = {
             srid: 4326
@@ -665,6 +671,21 @@ define([], function(){
           // occurrence
           var formTranslatorResult = FormTranslator(metadata.schema.properties, metadata.form, metadata.schema.required);
 
+          // if semantics is geotiff, complete the mask with .tif extension
+          if (self.series.semantics.code == "GRID-geotiff"){
+            formTranslatorResult.display[0].onChange = function(modelValue,form){
+              if (modelValue){
+                if (!modelValue.endsWith(".tif")){
+                  if (modelValue.indexOf(".") > -1){
+                    modelValue = modelValue.slice(0, modelValue.indexOf("."));
+                  }
+                  modelValue += ".tif";
+                  $scope.$ctrl.modelStorager.mask = modelValue;
+                }
+              }
+            }
+          }
+
           self.formStorager = formTranslatorResult.display;
           self.schemaStorager = {
             type: 'object',
@@ -687,7 +708,7 @@ define([], function(){
         self.createDataTableStore(properties);
       });
     }
-    
-    StoragerController.$inject = ['$scope', 'i18n', 'DataSeriesSemanticsService', 'GeoLibs', 'SemanticsParserFactory', '$timeout', '$window', 'Service', '$http', '$compile', 'FormTranslator']; 
+
+    StoragerController.$inject = ['$scope', 'i18n', 'DataSeriesSemanticsService', 'GeoLibs', 'SemanticsParserFactory', '$timeout', '$window', 'Service', '$http', '$compile', 'FormTranslator'];
     return terrama2StoragerComponent;
 });

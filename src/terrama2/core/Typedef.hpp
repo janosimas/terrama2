@@ -49,6 +49,8 @@ typedef uint32_t DataProviderId;
 typedef uint32_t ProcessId;
 //! Unique identifier for Processes log
 typedef uint32_t RegisterId;
+//! Unique identifier for Legend
+typedef uint32_t LegendId;
 //! DataProviderType code
 typedef std::string DataProviderType;
 //! Format of the data series semantics
@@ -59,7 +61,7 @@ namespace terrama2
   namespace core
   {
     //! Defines an invalid ID
-    inline uint32_t InvalidId() { return 0;}
+    constexpr uint32_t InvalidId() { return 0;}
   } /* core */
 } /* terrama2 */
 

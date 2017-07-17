@@ -44,13 +44,14 @@
    * 
    * @param {Object} viewObject - A view object to save
    * @param {number} projectId - A project identifier
+   * @param {Object} options - Transaction options
    * @returns {Promise<View>}
    */
-  View.save = function(viewObject, projectId) {
+  View.save = function(viewObject, projectId, options) {
     return new PromiseClass(function(resolve, reject) {
-      DataManager.orm.transaction(function(t) {
-        var options = {transaction: t};
-
+      var saveViewPromise;
+      // Function to save view and dependencies on db
+      var saveViewOnDb = function(options){
         // setting current project scope
         viewObject.project_id = projectId;
 
@@ -65,26 +66,35 @@
         return promiser
           .then(function(schedule) {
             if (schedule) {
-              if (viewObject.schedule_type == Enums.ScheduleType.CONDITIONAL){
-                viewObject.conditional_schedule_id = schedule.id;
+              if (viewObject.schedule_type == Enums.ScheduleType.AUTOMATIC){
+                viewObject.automatic_schedule_id = schedule.id;
               } else {
                 viewObject.schedule_id = schedule.id;
               }
             }
             return DataManager.addView(viewObject, options);
           });
-      })
+      };
 
-      .then(function(view) {
-        // sending to the services
-        sendView(view);
-
-        return resolve(view);
-      })
-      
-      .catch(function(err){
-        return reject(err);
-      });
+      // If already have a transaction, use to save view
+      // else create a transaction
+      if (options){
+        saveViewPromise = saveViewOnDb(options);
+      } else {
+        saveViewPromise = DataManager.orm.transaction(function(t) {
+          var options = {transaction: t};
+          return saveViewOnDb(options);
+        })
+      }
+      saveViewPromise
+        .then(function(view) {
+          // sending to the services
+          sendView(view);
+          return resolve(view);
+        })
+        .catch(function(err){
+          return reject(err);
+        });
     });
   };
   /**
@@ -148,11 +158,11 @@
                     viewObject.schedule_id = view.schedule.id;
                     return null;
                   });
-              } else if (view.scheduleType == Enums.ScheduleType.CONDITIONAL){
-                viewObject.conditional_schedule.data_ids = viewObject.schedule.data_ids;
-                return DataManager.updateConditionalSchedule(view.conditionalSchedule.id, viewObject.conditional_schedule, options)
+              } else if (view.scheduleType == Enums.ScheduleType.AUTOMATIC){
+                viewObject.automatic_schedule.data_ids = viewObject.schedule.data_ids;
+                return DataManager.updateAutomaticSchedule(view.automaticSchedule.id, viewObject.automatic_schedule, options)
                   .then(function(){
-                    viewObject.conditional_schedule_id = view.conditionalSchedule.id;
+                    viewObject.automatic_schedule_id = view.automaticSchedule.id;
                     return null;
                   });
               }
@@ -167,8 +177,8 @@
                       viewObject.schedule_id = scheduleResult.id;
                       return null;
                     } else {
-                      view.conditionalSchedule = scheduleResult;
-                      viewObject.conditional_schedule_id = scheduleResult.id;
+                      view.automaticSchedule = scheduleResult;
+                      viewObject.automatic_schedule_id = scheduleResult.id;
                       return null;
                     }
                   });
@@ -178,20 +188,20 @@
                 scheduleIdToRemove = view.schedule.id;
                 scheduleTypeToRemove = Enums.ScheduleType.SCHEDULE;
                 viewObject.schedule_id = null;
-                // if new schedule is CONDITIONAL, create the schedule
-                if (viewObject.schedule_type == Enums.ScheduleType.CONDITIONAL){
+                // if new schedule is AUTOMATIC, create the schedule
+                if (viewObject.schedule_type == Enums.ScheduleType.AUTOMATIC){
                   viewObject.schedule.id = null;
                   return DataManager.addSchedule(viewObject.schedule, options)
                     .then(function(scheduleResult){
-                      view.conditionalSchedule = scheduleResult;
-                      viewObject.conditional_schedule_id = scheduleResult.id;    
+                      view.automaticSchedule = scheduleResult;
+                      viewObject.automatic_schedule_id = scheduleResult.id;    
                     });
                 }
               } else {
                 removeSchedule = true;
-                scheduleIdToRemove = view.conditionalSchedule.id;
-                scheduleTypeToRemove = Enums.ScheduleType.CONDITIONAL;
-                viewObject.conditional_schedule_id = null;
+                scheduleIdToRemove = view.automaticSchedule.id;
+                scheduleTypeToRemove = Enums.ScheduleType.AUTOMATIC;
+                viewObject.automatic_schedule_id = null;
                 if (viewObject.schedule_type == Enums.ScheduleType.SCHEDULE){
                   viewObject.schedule.id = null;
                   return DataManager.addSchedule(viewObject.schedule, options)
@@ -209,8 +219,8 @@
             return DataManager.updateView({id: viewId}, viewObject, options)
               .then(function() {
                 if (removeSchedule) {
-                  if (scheduleTypeToRemove == Enums.ScheduleType.CONDITIONAL){
-                    return DataManager.removeConditionalSchedule({id: scheduleIdToRemove}, options);
+                  if (scheduleTypeToRemove == Enums.ScheduleType.AUTOMATIC){
+                    return DataManager.removeAutomaticSchedule({id: scheduleIdToRemove}, options);
                   } else {
                     return DataManager.removeSchedule({id: scheduleIdToRemove}, options);
                   }
@@ -219,7 +229,7 @@
           })
 
           .then(function() {
-            if (viewObject.legend && viewObject.legend.operation_id) {
+            if (!Utils.isEmpty(viewObject.legend) && !Utils.isEmpty(viewObject.legend.metadata)) {
               // if there is no legend before, insert a new one
               var legend = viewObject.legend;
               legend.view_id = viewId;
@@ -249,6 +259,11 @@
                         for(var k in legend.metadata) {
                           if (legend.metadata.hasOwnProperty(k)) {
                             promises.push(DataManager.upsertViewStyleLegendMetadata({key: k, legend_id: view.legend.id}, {key: k, value: legend.metadata[k], legend_id: view.legend.id}, options));
+                          }
+                        }
+                        for (var k in view.legend.metadata){
+                          if (!legend.metadata.hasOwnProperty(k)) {
+                            promises.push(DataManager.removeViewStyleLegendMetadata({key: k, legend_id: view.legend.id}, options));
                           }
                         }
                         return PromiseClass.all(promises);
@@ -296,18 +311,39 @@
         
         return DataManager.getView({id: viewId}, options)
           .then(function(view) {
-            return DataManager.removeView({id: viewId}, options)
-              .then(function() {
-                return view;
+            // try get registered view to send info to monitor
+            return DataManager.getRegisteredView({view_id: viewId}, options)
+              .then(function(registeredView){
+                return DataManager.removeView({id: viewId}, options)
+                  .then(function(){
+                    var viewObject = {
+                      view: view,
+                      registeredView: registeredView
+                    };
+                    return viewObject;
+                  })
+              })
+              .catch(function(){
+                return DataManager.removeView({id: viewId}, options)
+                  .then(function() {
+                    var viewObject = {
+                      view: view
+                    };
+                    return viewObject;
+                  });
+
               });
           });
       })
       
-      .then(function(view) {
+      .then(function(viewObject) {
         // removing views from tcp services
-        TcpService.remove({"Views": [view.id]});
-
-        return resolve(view);
+        TcpService.remove({"Views": [viewObject.view.id]});
+        // if has view on monitor, send signal to remove
+        if (viewObject.registeredView){
+          TcpService.removeView(viewObject.registeredView);
+        }
+        return resolve(viewObject.view);
       })
       
       .catch(function(err) {

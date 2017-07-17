@@ -47,8 +47,6 @@
 #include <string>
 #include <unordered_map>
 
-
-
 namespace te
 {
   namespace dt
@@ -89,6 +87,7 @@ namespace terrama2
         {
           public:
             Report(AlertPtr alert,
+                   terrama2::core::LegendPtr legend,
                    terrama2::core::DataSeriesPtr alertDataSeries,
                    std::shared_ptr<te::da::DataSet> alertDataSet,
                    std::vector<std::shared_ptr<te::dt::DateTime>> riskDates);
@@ -187,13 +186,17 @@ namespace terrama2
              */
             std::shared_ptr<te::da::DataSet> retrieveDataBelowRisk(const int risk) const;
 
-            double retrieveMaxValue() const;
-
-            double retrieveMinValue() const;
-
-            double retrieveMeanValue() const;
+            bool riskChanged() const { return riskChanged_; }
+            uint32_t maxRisk() const { return maxRisk_; }
+            uint32_t minRisk() const { return minRisk_; }
 
             terrama2::core::DataSeriesType dataSeriesType() const;
+
+
+//TODO: review these functions visibility, not to be used publicly
+            double retrieveMaxValue() const;
+            double retrieveMinValue() const;
+            double retrieveMeanValue() const;
 
           protected:
 
@@ -202,15 +205,21 @@ namespace terrama2
              * \param The DataSet
              */
             void updateReportDataset(const std::shared_ptr<te::da::DataSet> dataSet);
+            void updateReportGridDataset(const std::shared_ptr<te::da::DataSet> dataSet);
+            void updateReportMonitoredObjectDataset(const std::shared_ptr<te::da::DataSet> dataSet);
 
           protected:
 
             AlertPtr alert_; //!< The alert information
+            terrama2::core::LegendPtr legend_; //!< Alert legend data.
             terrama2::core::DataSeriesPtr alertDataSeries_;
             std::shared_ptr<te::mem::DataSet> dataSet_; //!< The dataSet with alert data
             std::vector<std::shared_ptr<te::dt::DateTime>> riskDates_; //!< A list with the datetime of each risk calculation
             mutable terrama2::core::FileRemover fileRemover_;
 
+            bool riskChanged_ = false; //!< Flags if the alert dataset has changed the value from last time.
+            uint32_t maxRisk_ = std::numeric_limits<uint32_t>::min();
+            uint32_t minRisk_ = std::numeric_limits<uint32_t>::max();
         };
       } /* core */
     } /* alert */

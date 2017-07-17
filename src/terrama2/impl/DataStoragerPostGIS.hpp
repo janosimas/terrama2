@@ -40,18 +40,29 @@ namespace terrama2
     class DataStoragerPostGIS : public DataStoragerTable
     {
       public:
-        DataStoragerPostGIS(DataProviderPtr outputDataProvider)
-                : DataStoragerTable(outputDataProvider) {}
+        DataStoragerPostGIS(DataSeriesPtr dataSeries, DataProviderPtr outputDataProvider)
+                : DataStoragerTable(dataSeries, outputDataProvider) {}
         ~DataStoragerPostGIS() {}
 
-        static DataStoragerType dataStoragerType() { return "POSTGIS"; }
-        static DataStoragerPtr make(DataProviderPtr dataProvider);
+        static DataStoragerPtr make(DataSeriesPtr dataSeries, DataProviderPtr dataProvider);
       protected:
         std::string getDataSetTableName(DataSetPtr dataSet) const;
         virtual std::string getCompleteURI(DataSetPtr outputDataSet) const override;
 
         virtual std::string driver() const override { return "POSTGIS"; }
         virtual std::string getDataSetName(DataSetPtr dataSet) const override { return getDataSetTableName(dataSet);}
+    };
+
+    class DataStoragerOccurrencePostGIS : public DataStoragerPostGIS
+    {
+      public:
+        static DataStoragerType dataStoragerType() { return "OCCURRENCE-postgis"; }
+    };
+
+    class DataStoragerAnalysisMonitoredObject : public DataStoragerPostGIS
+    {
+      public:
+        static DataStoragerType dataStoragerType() { return "ANALYSIS_MONITORED_OBJECT-postgis"; }
     };
   }
 }

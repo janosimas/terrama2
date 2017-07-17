@@ -1,13 +1,12 @@
 [
   {
-    "id": 2,
     "name": "Occurrence – INPE fire program",
     "code": "OCCURRENCE-wfp",
     "driver": "OCCURRENCE-wfp",
     "type": "OCCURRENCE",
     "temporality": "DYNAMIC",
     "format": "CSV",
-    "providers_type_list": ["FILE", "FTP"],
+    "providers_type_list": ["FILE", "FTP", "HTTP"],
     "metadata": {
       "timestamp_property": "data_pas",
       "geometry_property": "position",
@@ -20,28 +19,16 @@
     "collector": true,
     "gui": {
       "schema": {
-        "properties": {
-          "folder": {
-            "type": "string",
-            "title": "Folder",
-            "pattern": "^[^?#!$&'()*+,;=^§]+$"
-          },
+        "properties": {          
           "mask": {
             "type": "string",
             "title": "Mask",
-            "pattern": "^([\\w*.]+|%YYYY|%YY|%MM|%DD|%hh|%mm|%ss)+$"
+            "pattern": "^([\\/\\w()*.-]+|%YYYY|%YY|%MM|%DD|%hh|%mm|%ss)+$"
           }
         },
         "required": ["mask"]
       },
       "form": [
-        {
-          "key": "folder",
-          "htmlClass": "col-md-6 col-sm-12 terrama2-schema-form",
-          "validationMessage": {
-            "202": "Invalid folder"
-          }
-        },
         {
           "key": "mask",
           "htmlClass": "col-md-6",
@@ -53,14 +40,13 @@
     }
   },
   {
-    "id": 3,
     "name": "Occurrence – INPE lightning program",
     "code": "OCCURRENCE-lightning",
     "driver": "OCCURRENCE-lightning",
     "type": "OCCURRENCE",
     "temporality": "DYNAMIC",
     "format": "CSV",
-    "providers_type_list": ["FILE", "FTP"],
+    "providers_type_list": ["FILE", "FTP", "HTTP"],
     "metadata": {
       "timestamp_property": "Horario (GMT)",
       "geometry_property": "position",
@@ -75,27 +61,15 @@
     "gui": {
       "schema": {
         "properties": {
-          "folder": {
-            "type": "string",
-            "title": "Folder",
-            "pattern": "^[^?#!$&'()*+,;=^§]+$"
-          },
           "mask": {
             "type": "string",
             "title": "Mask",
-            "pattern": "^([\\w*.]+|%YYYY|%YY|%MM|%DD|%hh|%mm|%ss)+$"
+            "pattern": "^([\\/\\w()*.-]+|%YYYY|%YY|%MM|%DD|%hh|%mm|%ss)+$"
           }
         },
         "required": ["mask"]
       },
       "form": [
-        {
-          "key": "folder",
-          "htmlClass": "col-md-6 col-sm-12 terrama2-schema-form",
-          "validationMessage": {
-            "202": "Invalid folder"
-          }
-        },
         {
           "key": "mask",
           "htmlClass": "col-md-6",

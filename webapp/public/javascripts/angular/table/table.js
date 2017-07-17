@@ -34,15 +34,46 @@ define([
           linkToAdd: '=?linkToAdd',
           context: '=context',
           remove: '&?',
+          modalId: '=?modalId',
           run: '&?',
           extra: '=?extra'
         },
 
-        controller: ["$scope", "$http", "i18n", function($scope, $http, i18n) {
+        controller: ["$scope", "$http", "i18n", "$timeout", function($scope, $http, i18n, $timeout) {
           $scope.i18n = i18n;
           $scope.searchInput = '';
           $scope.selected = {};
           $scope.emptyMessage = 'No ' + ($scope.context || 'data') + ' found.';
+
+          if($scope.modalId === undefined || $scope.modalId === null || $scope.modalId === "") {
+            $scope.modalId = "removalModal";
+          }
+
+          $timeout(function() {
+            for(var j = 0, modelLength = $scope.model.length; j < modelLength; j++) {
+              $scope.model[j].showInTable = true;
+            }
+
+            if($scope.extra.executeAdvancedFilter !== undefined)
+              $scope.executeAdvancedFilter = $scope.extra.executeAdvancedFilter;
+            else
+              $scope.executeAdvancedFilter = function() {
+                var indexes = $scope.extra.advancedFilterField.split('.');
+
+                for(var i = 0, advancedFiltersLength = $scope.extra.advancedFilters.length; i < advancedFiltersLength; i++) {
+                  for(var j = 0, modelLength = $scope.model.length; j < modelLength; j++) {
+                    var jsonValue = getJsonValue($scope.model[j], 0, indexes);
+
+                    if((isNaN($scope.extra.advancedFilters[i].value) ? i18n.__($scope.extra.advancedFilters[i].value) : $scope.extra.advancedFilters[i].value) === jsonValue) {
+                      if($scope.extra.advancedFilters[i].checked)
+                        $scope.model[j].showInTable = true;
+                      else
+                        $scope.model[j].showInTable = false;
+                    }
+                  }
+                }
+              };
+          }, 500);
 
           // defines display fields in table
           $scope.displayFields = [];
@@ -62,16 +93,40 @@ define([
           $scope.confirmRemoval = function(object) {
             $scope.objectToRemove = object;
 
-            $('#myModal').modal();
+            $("#" + $scope.modalId).modal();
           };
 
           $scope.serviceStartTime = null;
           $scope.serviceVersion = null;
-          
+          $scope.showAdvancedFilter = false;
+
+          $scope.showHideAdvancedFilter = function() {
+            if($scope.showAdvancedFilter)
+              $scope.showAdvancedFilter = false;
+            else
+              $scope.showAdvancedFilter = true;
+          }
+
+          var getJsonValue = function(json, curIdx, indexes) {
+            if(curIdx === (indexes.length - 1))
+              return json[indexes[curIdx]];
+            else
+              return getJsonValue(json[indexes[curIdx]], curIdx + 1, indexes);
+          }
+
+          $scope.showInTableFilter = function(item) {
+            return item.showInTable || item.showInTable === undefined;
+          }
+
           $scope.showInfo = function(object){
             $scope.serviceStartTime = object.start_time;
             $scope.serviceVersion = object.version;
             $('#infoModal').modal();
+          }
+
+          $scope.showErrorInfo = function(object) {
+            $('#serviceErrorModal .modal-body > p').text(object.error);
+            $('#serviceErrorModal').modal();
           }
 
           $scope.resetObjectToRemove = function() {

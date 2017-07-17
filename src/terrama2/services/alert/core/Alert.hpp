@@ -51,11 +51,12 @@ namespace terrama2
         //! Additional dataseries for alert process.
         struct AdditionalData
         {
-          DataSeriesId dataSeriesId;//!< Identifier of the additional dataseries
-          DataSetId dataSetId;//!< Identifier of the dataset referred
+          DataSeriesId dataSeriesId = terrama2::core::InvalidId();//!< Identifier of the additional dataseries
+          DataSetId dataSetId = terrama2::core::InvalidId();//!< Identifier of the dataset referred
           std::string referrerAttribute;
           std::string referredAttribute;
           std::vector<std::string> attributes;//!< attributes that will be copied to the alert
+          std::map<std::string, std::string> alias;//!< attributes alias
         };
 
         //! Notification rules and targets .
@@ -82,7 +83,7 @@ namespace terrama2
           ServiceInstanceId serviceInstanceId; //!< Identifier of the service instance that should run the alert.
 
           std::string riskAttribute;//!< Attribute of the DataSeries that will be used for risk analysis.
-          terrama2::core::Risk risk;//!< Risk rule of the alert
+          LegendId riskId;//!< Risk rule of the alert
           terrama2::core::Filter filter;//!< Information on how input data should be filtered before the alert is created.
 
           std::vector<AdditionalData> additionalDataVector;//!< Vector of additional DataSeries and attributes that should be included in the result.

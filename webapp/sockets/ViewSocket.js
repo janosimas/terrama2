@@ -32,6 +32,24 @@
       ioSocket.emit("viewReceived", registeredView.toObject());
     });
 
+    /**
+     * Defines an alert notify. Triggered when C++ services done alert execution and TerraMA² WebApp send info to WebMonitor
+     * 
+     * @param {Object} viewInfo - View info to notify
+     */
+    TcpService.on("notifyView", function(viewInfo){
+      ioSocket.emit("notifyView", viewInfo);
+    });
+
+    /**
+     * Defines a remove notify. Triggered when remove a view in WebApp
+     * 
+     * @param {Object} viewInfo - View info to remove
+     */
+    TcpService.on("removeView", function(viewInfo){
+      ioSocket.emit("removeView", viewInfo);
+    });
+
     // Socket connection event
     ioSocket.on('connection', function(client) {
       /**
@@ -45,9 +63,12 @@
         // TODO: filter user permission
         return DataManager.listRegisteredViews()
           .then(function(views) {
-            return client.emit("viewResponse", views.map(function(view) {
-              return view.toObject();
-            }));
+            return client.emit("viewResponse", {
+              views: views.map(function(view) {
+                return view.toObject();
+              }),
+              projects: DataManager.listProjects()
+            });
           })
 
           .catch(function(err) {

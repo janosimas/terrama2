@@ -12,6 +12,7 @@ var NodeUtils = require('util');
 var EventEmitter = require('events').EventEmitter;
 var ServiceType = require('./Enums').ServiceType;
 var PromiseClass = require('./Promise');
+var Application = require('./Application');
 
 // Facades
 var ProcessFinished = require("./facade/tcp-manager/ProcessFinished");
@@ -261,20 +262,37 @@ TcpManager.prototype.startService = function(serviceInstance) {
 
     return instance.connect(serviceInstance).then(function() {
       return PromiseClass.all([
-          instance.adapter.execute(serviceInstance.pathToBinary, ['--version'], {}),
-          instance.startService()
-        ])
-        .spread(function(versionResponse, startResponse) {
-          self.emit("serviceVersion", serviceInstance, versionResponse.data);
+        instance.adapter.execute(serviceInstance.pathToBinary, ['--version'], {}),
+        instance.startService()
+      ]).spread(function(versionResponse, startResponse) {
+        self.emit("serviceVersion", serviceInstance, versionResponse.data);
 
-          return resolve(startResponse.code);
-        })
-        .catch(function(err) {
+        return resolve(startResponse.code);
+      }).catch(function(err) {
+        var config = Application.getContextConfig();
+        var tryDefaultPath = (serviceInstance.pathToBinary === config.defaultExecutableName);
+
+        if(tryDefaultPath) {
+          serviceInstance.pathToBinary = (config.defaultExecutablePath.endsWith("/") ? config.defaultExecutablePath : config.defaultExecutablePath + "/") + config.defaultExecutableName;
+
+          return PromiseClass.all([
+            instance.adapter.execute(serviceInstance.pathToBinary, ['--version'], {}),
+            instance.startService()
+          ]).spread(function(versionResponse, startResponse) {
+            self.emit("serviceVersion", serviceInstance, versionResponse.data);
+
+            return resolve(startResponse.code);
+          }).catch(function(err) {
+            return reject(err);
+          }).finally(function() {
+            return instance.disconnect();
+          });
+        } else {
           return reject(err);
-        })
-        .finally(function() {
-          return instance.disconnect();
-        });
+        }
+      }).finally(function() {
+        return instance.disconnect();
+      });
     }).catch(function(err) {
       return reject(err);
     });
@@ -426,7 +444,7 @@ TcpManager.prototype.initialize = function(client) {
             // if the finished process is from collector or analysis run conditioned process
             if (targetProcess.serviceType == ServiceType.COLLECTOR || targetProcess.serviceType == ServiceType.ANALYSIS){
               targetProcess.processToRun.forEach(function(processToRun){
-                if (processToRun){
+                if (processToRun && response.automatic !== false){
                   self.startProcess(processToRun.instance, {ids: processToRun.ids, execution_date: response.execution_date});
                   self.logData(processToRun.instance, {begin: 0, end: 2, process_ids: [processToRun.ids]});
                 }
@@ -435,6 +453,10 @@ TcpManager.prototype.initialize = function(client) {
             // if the finished process ir from view, save/update the registered view
             else if (targetProcess.serviceType == ServiceType.VIEW){
               self.emit("processFinished", targetProcess.registeredView);
+            } 
+            else if (targetProcess.serviceType == ServiceType.ALERT){
+              if (response.notify)
+                self.emit("notifyView", targetProcess);
             }
           }
         })

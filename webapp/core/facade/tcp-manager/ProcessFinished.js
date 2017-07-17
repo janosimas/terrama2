@@ -44,6 +44,9 @@
             case ServiceType.VIEW:
               handler = self.handleRegisteredViews(response);
               break;
+            case ServiceType.ALERT:
+              handler = self.handleFinishedAlert(response);
+              break;
             default:
               throw new ServiceTypeError(Utils.format("Invalid instance id %s", response.instance_id));
           }
@@ -205,17 +208,53 @@
     });
   };
   /**
+   * It handles alert process finished. Once alertResultObject.notify is true, send signal to web monitor notify the user
+   * 
+   * @param {Object} alertResultObject - An alert result object retrieved from C++ services.
+   * 
+   * @returns {Promise}
+   */
+  ProcessFinished.handleFinishedAlert = function(alertResultObject){
+    return new PromiseClass(function(resolve, reject){
+      if (alertResultObject.result){
+        return DataManager.orm.transaction(function(t){
+          var options = {transaction: t};
+          return DataManager.getAlert({id: alertResultObject.process_id}, options)
+            .then(function(alert){
+              if (alertResultObject.notify && alert.view && alert.view.id){
+                return DataManager.getRegisteredView({view_id: alert.view.id}, options)
+                  .then(function(registeredView){
+                    var objectResponse = {
+                      serviceType: ServiceType.ALERT,
+                      registeredView: registeredView
+                    };
+                    return resolve(objectResponse);
+                  });
+              } else {
+                return resolve();
+              }
+            })
+            .catch(function(err){
+              return reject(new Error(err.toString()));
+            });
+        })
+      } else {
+        return reject(new Error("The alert process finished with error"));
+      }
+    });
+  }
+  /**
    * Function to list conditioned process
    */
   var listConditionedProcess = function(restritions, options, resolve, reject){
-    // Get conditional schedule list that contais the collector
-    return DataManager.listConditionalSchedule(restritions, options)
-      .then(function(conditionalScheduleList){
-        if (conditionalScheduleList.length > 0){
+    // Get automatic schedule list that contais the collector
+    return DataManager.listAutomaticSchedule(restritions, options)
+      .then(function(automaticScheduleList){
+        if (automaticScheduleList.length > 0){
           var promises = [];
-          //for each conditional schedule in list, check if belong to an analysis or a view
-          conditionalScheduleList.forEach(function(conditionalSchedule){
-            promises.push(DataManager.getAnalysis({conditional_schedule_id: conditionalSchedule.id}, options)
+          //for each automatic schedule in list, check if belong to an analysis or a view
+          automaticScheduleList.forEach(function(automaticSchedule){
+            promises.push(DataManager.getAnalysis({automatic_schedule_id: automaticSchedule.id}, options)
               .then(function(analysisResult){
                 return DataManager.getServiceInstance({id: analysisResult.instance_id}, options)
                   .then(function(instanceServiceResponse){
@@ -227,7 +266,7 @@
                   })
               })
               .catch(function(err){
-                return DataManager.getView({conditional_schedule_id: conditionalSchedule.id}, options)
+                return DataManager.getView({automatic_schedule_id: automaticSchedule.id}, options)
                   .then(function(viewResult){
                     return DataManager.getServiceInstance({id: viewResult.serviceInstanceId}, options)
                       .then(function(instanceServiceResponse){
@@ -239,7 +278,7 @@
                       });
                   })
                   .catch(function(err){
-                    return DataManager.getAlert({conditional_schedule_id: conditionalSchedule.id}, options)
+                    return DataManager.getAlert({automatic_schedule_id: automaticSchedule.id}, options)
                       .then(function(alertResult){
                         return DataManager.getServiceInstance({id: alertResult.instance_id}, options)
                           .then(function(instanceServiceResponse){
