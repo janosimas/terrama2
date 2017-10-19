@@ -38,6 +38,10 @@ module.exports = function(sequelize, DataTypes) {
       administrator: {
         type: DataTypes.BOOLEAN,
         allowNull: false
+      },
+      token: {
+        type: DataTypes.STRING,
+        allowNull: false
       }
     },
     {
@@ -45,11 +49,23 @@ module.exports = function(sequelize, DataTypes) {
       underscoredAll: true,
       timestamps: false,
       classMethods: {
+        associate: function(models){
+          User.hasMany(models.Project, {
+            onDelete: "CASCADE",
+            foreignKey: {
+              name: 'user_id',
+              allowNull: true
+            }
+          });
+        },
         generateSalt: function() {
           return bcrypt.genSaltSync(10);
         },
         generateHash: function(password, salt) {
           return bcrypt.hashSync(password, salt);
+        },
+        generateToken: function(userString) {
+          return bcrypt.hashSync(userString, 10);
         }
       }
     }

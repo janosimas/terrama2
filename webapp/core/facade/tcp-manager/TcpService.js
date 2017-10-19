@@ -433,6 +433,36 @@ TcpService.prototype.status = function(json) {
 }; // end client status listener
 
 /**
+ * Listener for handling status signal when try to delete an object. 
+ * 
+ * @param {Object} json - A given arguments sent by client
+ * @param {number} json.service - A TerraMA² service instance id
+ */
+TcpService.prototype.statusToDelete = function(json) {
+  var self = this;
+  return new PromiseClass(function(resolve, reject) {
+    return DataManager.getServiceInstance({id: json.service})
+      .then(function(instance) {
+        return TcpManager.connect(instance)
+          .then(function() {
+            var params = {
+              online: true,
+              service: instance
+            };
+            return resolve(params);
+          })
+          .catch(function() {
+            var params = {
+              online: false,
+              service: instance
+            };
+            return resolve(params);
+          });
+      });
+  });
+}; // end client status to delete listener
+
+/**
  * Listener for handling STOP service signal. When called, it sends a STOP_SERVICE signal followed by a STATUS_SERVICE.
  * Once TerraMA² executable receives STOP_SERVICE, it starts changing shutdown the running active processes, so it may
  * take a few seconds/minutes to finish. 
@@ -508,6 +538,16 @@ TcpService.prototype.send = function(data, serviceId) {
         return reject(err);
       });
   });
+};
+
+/**
+ * Emits a given event sending a given object.
+ * 
+ * @param {String} event - Event to be emitted
+ * @param {Object} data - Data to be sent
+ */
+TcpService.prototype.emitEvent = function(event, data) {
+  tcpService.emit(event, data);
 };
 
 /**
@@ -642,7 +682,8 @@ TcpService.prototype.removeView = function(registeredView){
   var viewObject = {
     workspace: registeredView.workspace,
     layer: registeredView.layers[0],
-    parent: registeredView.dataSeriesType
+    parent: registeredView.dataSeriesType,
+    private: registeredView.view.private
   }
   self.emit("removeView", viewObject);
 }
@@ -684,7 +725,9 @@ function onStatusReceived(service, response) {
       loading: false,
       online: Object.keys(response).length > 0,
       start_time: response.start_time,
-      terrama2_version: response.terrama2_version
+      terrama2_version: response.terrama2_version,
+      logger_online: response.logger_online,
+      maps_server_connection: response.maps_server_connection
     });
   }
 }
@@ -767,7 +810,8 @@ function onNotifyView(resp) {
   if (resp.registeredView){
     var viewObject = {
       workspace: resp.registeredView.workspace,
-      layer: resp.registeredView.layers[0]
+      layer: resp.registeredView.layers[0],
+      private: resp.registeredView.view.private
     };
     tcpService.emit("notifyView", viewObject);
   }
@@ -783,7 +827,8 @@ function onNotifyView(resp) {
 function RemoveView(registeredView){
   var viewObject = {
     workspace: registeredView.workspace,
-    layer: registeredView.layers[0]
+    layer: registeredView.layers[0],
+    private: registeredView.view.private
   }
   tcpService.emit("removeView", viewObject);
 }

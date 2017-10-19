@@ -42,6 +42,12 @@
 #include "../../../core/utility/FileRemover.hpp"
 #include "../../../core/utility/TimeUtils.hpp"
 #include "../../../core/utility/Utils.hpp"
+#include "../../../core/utility/Raii.hpp"
+
+// TerraLib Datasource
+#include <terralib/dataaccess/datasource/DataSource.h>
+#include <terralib/dataaccess/datasource/DataSourceFactory.h>
+#include <terralib/dataaccess/datasource/DataSourceTransactor.h>
 
 // TerraLib
 #include <terralib/se/Categorize.h>
@@ -51,11 +57,16 @@
 #include <terralib/se/PointSymbolizer.h>
 #include <terralib/se/Stroke.h>
 #include <terralib/se/Fill.h>
+#include <terralib/se/Utils.h>
 
 // STL
 #include <sstream>
 #include <iomanip>
 
+// QT
+#include <QFile>
+#include <QFileInfo>
+#include <QDir>
 
 void terrama2::services::view::core::registerFactories()
 {
@@ -204,4 +215,76 @@ std::string terrama2::services::view::core::toString(const double value, const i
   ss << std::fixed << std::setprecision(precision) << value;
 
   return ss.str();
+}
+
+void terrama2::services::view::core::removeTable(const std::string& name, const te::core::URI& uri)
+{
+  std::shared_ptr<te::da::DataSource> dataSource = te::da::DataSourceFactory::make("POSTGIS", uri);
+  terrama2::core::OpenClose<std::shared_ptr<te::da::DataSource>> openClose(dataSource);
+
+  if (dataSource->isOpened())
+    dataSource->dropDataSet(name);
+  else
+  {
+    const QString errMsg = QObject::tr("Unable to remove view table %1.").arg(QString::fromStdString(name));
+    TERRAMA2_LOG_ERROR() << errMsg;
+    throw Exception() << ErrorDescription(errMsg);
+  }
+}
+
+void terrama2::services::view::core::createFolder(const std::string& folderpath)
+{
+  QDir directory(folderpath.c_str());
+
+  if (!directory.exists())
+    if (!directory.mkdir(directory.path()))
+    {
+      const QString errMsg = QObject::tr("Could not create directory %1").arg(directory.path());
+      TERRAMA2_LOG_ERROR() << errMsg;
+      throw Exception() << ErrorDescription(errMsg);
+    }
+}
+
+void terrama2::services::view::core::removeFolder(const std::string& folderpath)
+{
+  QDir directory(folderpath.c_str());
+
+  if (directory.exists())
+    if (!directory.removeRecursively())
+    {
+      const QString errMsg = QObject::tr("Could not remove directory %1").arg(directory.path());
+      TERRAMA2_LOG_ERROR() << errMsg;
+      throw Exception() << ErrorDescription(errMsg);
+    }
+}
+
+void terrama2::services::view::core::recreateFolder(const std::string& folderpath)
+{
+  removeFolder(folderpath);
+  createFolder(folderpath);
+}
+
+void terrama2::services::view::core::removeFile(const std::string& filepath)
+{
+  QFileInfo file(filepath.c_str());
+
+  if (file.exists())
+  {
+    if (file.isFile())
+    {
+      QFile f(file.filePath());
+      if (!f.remove())
+      {
+        QString errMsg = QObject::tr("Could not remove file: %1").arg(filepath.c_str());
+        TERRAMA2_LOG_ERROR() << errMsg;
+        throw Exception() << ErrorDescription(errMsg);
+      }
+    }
+    else
+    {
+      const QString errMsg = QObject::tr("Not a file: %1").arg(filepath.c_str());
+      TERRAMA2_LOG_ERROR() << errMsg;
+      throw Exception() << ErrorDescription(errMsg);
+    }
+  }
 }

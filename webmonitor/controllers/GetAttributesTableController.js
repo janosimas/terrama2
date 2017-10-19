@@ -118,12 +118,12 @@ var GetAttributesTableController = function(app) {
       if(search !== "") {
         search = search.substring(0, search.length - 4) + ")";
 
-        if(request.body.timeStart !== null && request.body.timeEnd !== null && (dateTimeField !== null || dateField !== null)) {
+        if(request.body.timeStart !== undefined && request.body.timeEnd !== undefined && request.body.timeStart !== null && request.body.timeEnd !== null && request.body.timeStart !== "" && request.body.timeEnd !== "" && (dateTimeField !== null || dateField !== null)) {
           search += " and (" + (dateTimeField !== null ? dateTimeField : dateField) + " between '" + request.body.timeStart + "' and '" + request.body.timeEnd + "')";
         }
 
         url += search;
-      } else if(request.body.timeStart !== null && request.body.timeEnd !== null && (dateTimeField !== null || dateField !== null)) {
+      } else if(request.body.timeStart !== undefined && request.body.timeEnd !== undefined && request.body.timeStart !== null && request.body.timeEnd !== null && request.body.timeStart !== "" && request.body.timeEnd !== "" && (dateTimeField !== null || dateField !== null)) {
         url += "&cql_filter=(" + (dateTimeField !== null ? dateTimeField : dateField) + " between '" + request.body.timeStart + "' and '" + request.body.timeEnd + "')";
       }
 
@@ -186,9 +186,9 @@ var GetAttributesTableController = function(app) {
    */
   var getColumns = function(request, response) {
     if(request.query.layer === undefined || request.query.layer === null || request.query.layer === "") {
-        response.json({
-          fields: []
-        });
+      response.json({
+        fields: []
+      });
     } else {
       getValidProperties(request.query.layer, request.query.geoserverUri, function(fields) {
         response.json({

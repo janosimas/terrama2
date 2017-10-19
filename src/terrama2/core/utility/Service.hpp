@@ -33,6 +33,7 @@
 #include "../Typedef.hpp"
 #include "../Shared.hpp"
 #include "../data-model/Schedule.hpp"
+#include "../data-model/Filter.hpp"
 #include "ProcessLogger.hpp"
 
 //STL
@@ -128,6 +129,7 @@ namespace terrama2
 
          */
         virtual void start(size_t threadNumber = 0);
+        virtual void getStatus(QJsonObject& /*obj*/) const {};
 
       signals:
         void serviceFinishedSignal();
@@ -172,6 +174,7 @@ namespace terrama2
         virtual void updateAdditionalInfo(const QJsonObject& obj) noexcept = 0;
 
       protected:
+        void updateFilterDiscardDates(terrama2::core::Filter& filter, std::shared_ptr<ProcessLogger> logger, ProcessId processId) const;
 
         TimerPtr createTimer(const terrama2::core::Schedule& schedule, ProcessId processId, std::shared_ptr<te::dt::TimeInstantTZ> lastProcess) const;
         /*!
@@ -193,7 +196,7 @@ namespace terrama2
         virtual void prepareTask(const ExecutionPackage& executionPackage) = 0;
 
         //! Process a queued task.
-        void processingTaskThread() noexcept;
+        void processingTaskThread(const std::shared_ptr< const ProcessLogger > logger) noexcept;
 
         //! Verifys if the number of threads is greater than 0.
         size_t verifyNumberOfThreads(size_t numberOfThreads) const;

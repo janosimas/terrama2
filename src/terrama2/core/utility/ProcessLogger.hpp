@@ -33,9 +33,9 @@
 // TerraMA2
 #include "../Exception.hpp"
 #include "../Typedef.hpp"
+#include "Raii.hpp"
 
 // TerraLib
-#include <terralib/dataaccess/datasource/DataSource.h>
 #include <terralib/datatype/TimeInstantTZ.h>
 #include <terralib/core/uri/URI.h>
 
@@ -107,7 +107,9 @@ namespace terrama2
         /*!
          * \brief Class destructor
          */
-        virtual ~ProcessLogger();
+        virtual ~ProcessLogger() = default;
+
+        virtual bool isValid() const;
 
 
         /*!
@@ -176,7 +178,7 @@ namespace terrama2
         virtual void updateStatus(std::vector<Status> oldStatus, Status newStatus) const;
 
         void internalClone(std::shared_ptr<terrama2::core::ProcessLogger> loggerCopy) const;
-        virtual std::shared_ptr<ProcessLogger> clone() const { return nullptr; }
+        virtual std::shared_ptr<ProcessLogger> clone() const = 0;
 
         virtual void setStartProcessingTime(const std::shared_ptr< te::dt::TimeInstantTZ > processingStartTime, const RegisterId registerId) const;
         virtual void setEndProcessingTime(const std::shared_ptr< te::dt::TimeInstantTZ > processingEndTime, const RegisterId registerId) const;
@@ -187,7 +189,6 @@ namespace terrama2
          */
          virtual te::core::URI getConnectionInfo() const { return dataSource_->getConnectionInfo(); }
 
-      public slots:
         /*!
         * \brief Reset connection to log database information
         * \param uri Datasource connection information.
@@ -230,18 +231,19 @@ namespace terrama2
          */
         void checkTableConsistency();
 
+        //! Check if the logger is in a valid state.
+        void checkLogger() const;
+
       private:
         /*!
          * \brief Log in the log table the data stored in Json
          */
         void updateData(const RegisterId registerId, const QJsonObject obj) const;
 
-        void closeConnection();
-
         std::string schema_ = "terrama2";
         std::string tableName_ = "";
         std::string messagesTableName_ = "";
-        std::unique_ptr< te::da::DataSource > dataSource_;
+        mutable DataSourcePtr dataSource_;
         bool isValid_ = false;
         bool consistent_ = false;
 

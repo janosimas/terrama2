@@ -111,7 +111,7 @@ namespace terrama2
         ValueDef* yDef_;
         ValueDef* zDef_;
         TValueDef* tDef_;
-        std::vector<Var*> vecVars_;
+        std::vector<std::unique_ptr<Var> > vecVars_;
         Srid srid_;
         uint32_t numberOfBands_;
         double valueMultiplier_;
@@ -243,7 +243,8 @@ namespace terrama2
                                                           terrama2::core::DataSetPtr dataSet,
                                                           std::shared_ptr<terrama2::core::FileRemover> remover,
                                                           const std::string& timezone,
-                                                          DataSetSeries& series) const override;
+                                                          DataSetSeries& series,
+                                                          std::shared_ptr< te::dt::TimeInstantTZ >& lastFileTimestamp) const override;
 
       protected:
         //! Returns the data source type.

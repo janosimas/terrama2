@@ -167,12 +167,14 @@ namespace terrama2
     //! Recover complete mask, folder plus file mask
     std::string getMask(DataSetPtr dataset);
 
-    //Returns the file mask .
+    //! Recover table name of the DCP postions table_name
+    std::string getDCPPositionsTableName(DataSeriesPtr dataSeries);
+
+    //! Returns the file mask .
     std::string getFileMask(DataSetPtr dataSet);
 
-    //Returns the folder mask .
+    //! Returns the folder mask .
     std::string getFolderMask(DataSetPtr dataSet);
-
   } // end namespace core
 }   // end namespace terrama2
 

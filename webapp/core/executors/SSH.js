@@ -9,7 +9,7 @@ var Utils = require("./../Utils");
 var Enums = require('./../Enums');
 var ScreenAdapter = require('./adapters/ScreenAdapter');
 var LocalSystemAdapter = require("./adapters/LocalSystemAdapter");
-
+var config = require('../Application').getContextConfig();
 
 /**
  * Class responsible for handling ssh connection.
@@ -156,7 +156,15 @@ SSHDispatcher.prototype.startService = function(commandType) {
       var serviceTypeString = Utils.getServiceTypeName(serviceInstance.service_type_id);
       var enviromentVars = serviceInstance.runEnviroment;
 
-      var command = util.format("%s %s %s", executable, serviceTypeString, port);
+      if(config.disablePDF && !config.debug) {
+        var command = util.format("%s %s %s %s %s %s %s %s %s", "sudo", "-H", "-u", "terrama2", executable, serviceTypeString, port, '-platform', 'minimal');
+      } else if(!config.disablePDF && !config.debug) {
+        var command = util.format("%s %s %s %s %s %s %s", "sudo", "-H", "-u", "terrama2", executable, serviceTypeString, port);
+      } else if(config.disablePDF && config.debug) {
+        var command = util.format("%s %s %s %s %s", executable, serviceTypeString, port, '-platform', 'minimal');
+      } else {
+        var command = util.format("%s %s %s", executable, serviceTypeString, port);
+      }
 
       var _handleError = function(err, code) {
         reject(err, code);

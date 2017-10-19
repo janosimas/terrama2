@@ -38,6 +38,7 @@
 
 // TerraLib
 #include <terralib/se/Symbolizer.h>
+#include <terralib/core/uri.h>
 
 // STD
 #include <memory>
@@ -75,6 +76,45 @@ namespace terrama2
          * \return String value
          */
         std::string toString(const double value, const int& precision = 8);
+
+        /*!
+         * \brief Removes table from provided URI.
+         * \param name Table name
+         * \param uri Connection URI
+         */
+        void removeTable(const std::string& name, const te::core::URI& uri);
+
+        /*!
+         * \brief Tries to remove folder
+         *
+         * \throws Exception when could not remove folder
+         *
+         * \param folderpath Path to create
+         */
+        void removeFolder(const std::string& folderpath);
+
+        /*!
+         * \brief Tries to create folder
+         * \param folderpath Path to create
+         */
+        void createFolder(const std::string& folderpath);
+
+        /*!
+         * \brief Tries to remove and then create new folder
+         * \throws Exception when could not create or remove folder
+         *
+         * \param folderpath Path to re-criate
+         */
+        void recreateFolder(const std::string& folderpath);
+
+        /*! \brief Tries to remove file from disk
+         * \note It only throw exception when the filepath exists but could not remove (Permission management/Lock)
+         *
+         * \throws Exception when could not remove file.
+         *
+         * \param filepath Path to file
+         */
+        void removeFile(const std::string& filepath);
 
       } // end namespace core
     }   // end namespace view

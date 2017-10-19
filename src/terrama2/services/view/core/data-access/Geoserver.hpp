@@ -47,16 +47,37 @@
 // STL
 #include <string>
 #include <map>
-#include <list>
 
 namespace terrama2
 {
+  namespace core
+  {
+    class ProcessLogger;
+  }
   namespace services
   {
     namespace view
     {
       namespace core
       {
+        /*!
+         * \brief Defines a struct to store helpers while perform GeoServer configuration
+         */
+        struct RasterInfo
+        {
+          RasterInfo() = default;
+          RasterInfo(RasterInfo&&) = default;
+          RasterInfo(const RasterInfo&) = delete;
+          RasterInfo& operator=(const RasterInfo&) = delete;
+
+          std::string name; //!< Defines Raster Name
+          int srid; //!< Raster SRID
+          double resolutionX; //!< Represents Raster Resolution X Pixel
+          double resolutionY; //!< Represents Raster Resolution Y Pixel
+          te::dt::TimeInstant timeTz; //!< Raster Time Instant TZ
+          std::unique_ptr<te::gm::Envelope> envelope; //!< Raster envelope limits
+        };
+
         /*!
             \brief GeoServer class for working with GeoServer through RESTful.
 
@@ -188,7 +209,7 @@ namespace terrama2
             void registerMosaicCoverage(const std::string& coverageStoreName,
                                         const std::string& mosaicPath,
                                         const std::string& coverageName,
-                                        const int srid,
+                                        const RasterInfo& rasterInfo,
                                         const std::string& style = "",
                                         const std::string& configure = "all") const;
 
@@ -204,7 +225,9 @@ namespace terrama2
              *
              * \param v - Current view id object to remove. Default is selected workspace
              */
-            void cleanup(const ViewId& id = 0) override;
+            void cleanup(const ViewId& id = 0,
+                         terrama2::core::DataProviderPtr dataProvider = nullptr,
+                         std::shared_ptr<terrama2::core::ProcessLogger> logger = nullptr) override;
 
 
             /*!
@@ -350,7 +373,7 @@ namespace terrama2
 
             std::string createPostgisMosaicLayerPropertiesFile(const std::string& outputFolder,
                                                         const std::string& exhibitionName,
-                                                        const int srid) const;
+                                                        const RasterInfo& rasterInfo) const;
 
             void createPostgisIndexerPropertiesFile(const std::string& outputFolder,
                                                     const std::string& exhibitionName) const;
@@ -365,9 +388,9 @@ namespace terrama2
              * \param filter
              * \return
              */
-            std::vector<std::tuple<std::string, te::dt::TimeInstant, int, te::gm::Envelope*> > getRasterInfo(terrama2::core::DataManagerPtr dataManager,
-                          terrama2::core::DataSetPtr dataset,
-                          const terrama2::core::Filter& filter) const;
+            std::vector<RasterInfo> getRasterInfo(terrama2::core::DataManagerPtr dataManager,
+                                                  terrama2::core::DataSetPtr dataset,
+                                                  const terrama2::core::Filter& filter) const;
 
             void createMosaicTable(std::shared_ptr<te::da::DataSource> transactor,
                                    const std::string& tableName,
@@ -382,9 +405,15 @@ namespace terrama2
              */
             std::string generateWorkspaceName(const ViewId& id);
 
+            /*!
+             * \brief Helper to retrieve common view name with view id.
+             * \param id View identifier
+             * \return Unique Layer Name
+             */
+            std::string generateLayerName(const ViewId& id) const;
+
 
             std::string workspace_ = "terrama2"; /*!< A workspace to work in GeoServer */
-
         };
       }
     }

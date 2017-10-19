@@ -1,69 +1,67 @@
 'use strict';
 
 define(
-  ['TerraMA2WebComponents'],
-  function(TerraMA2WebComponents) {
+  ['components/Layers', 'TerraMA2WebComponents'],
+  function(Layers, TerraMA2WebComponents) {
 
-    var sliderCapabilities = [];
+    var setSlider = function(dateInfo, layerId) {
+      var valMap = dateInfo.dates;
+      var initDate = dateInfo.initialDateIndex;
 
-    var insertIntoSliderCapabilities = function(capability) {
-      sliderCapabilities.push(capability);
-    };
+      var slider = $("#slider" + layerId.replace(':', ''));
+      var sliderParent = $(slider).parent();
 
-    var setSlider = function(rangeDate, layerId) {
-			var valMap = rangeDate;
+      if(!$(sliderParent).is(":visible"))
+        $(sliderParent).show();
+      else
+        $(sliderParent).hide();
 
-			var slider = $("#slider" + layerId.replace(':',''));
-			var sliderParent = $(slider).parent();
+      var labelDate = $(sliderParent).find("label");
+      $(labelDate).text(moment(dateInfo.dates[initDate].replace('Z', '')).format("lll"));
 
-			if(!$(sliderParent).is(":visible"))
-				$(sliderParent).show();
-			else
-				$(sliderParent).hide();
-
-			var labelDate = $(sliderParent).find("label");
-			$(labelDate).text(moment(rangeDate[0]).format("lll"));
-			
-			$(slider).slider({
-				min: 0,
-				max: valMap.length - 1,
-				value: 0,
-				slide: function(event, ui) {
-					$(labelDate).text(moment(rangeDate[ui.value]).format("lll"));
-				},
-				stop: function(event, ui) {                        
-					doSlide(layerId, rangeDate[ui.value]);
-				}       
-			});
+      $(slider).slider({
+        min: 0,
+        max: valMap.length - 1,
+        value: initDate,
+        slide: function(event, ui) {
+          $(labelDate).text(moment(dateInfo.dates[ui.value].replace('Z', '')).format("lll"));
+        },
+        stop: function(event, ui) {
+          doSlide(layerId, dateInfo.dates[ui.value]);
+          dateInfo.initialDateIndex = ui.value;
+          Layers.updateDateInfo(dateInfo, layerId);
+        }
+      });
     };
 
     var doSlide = function(layerId, layerTime) {
-      var timeFormat = moment(layerTime).format("YYYY-MM-DDThh:mm:ss") + "Z";
+      var timeFormat = moment(layerTime.replace('Z', '')).format("YYYY-MM-DDThh:mm:ss") + "Z";
       TerraMA2WebComponents.MapDisplay.updateLayerTime(layerId, layerTime);
     };
 
     var changeLayerOpacity = function(layerId, opacityValue) {
-      TerraMA2WebComponents.MapDisplay.updateLayerOpacity(layerId, opacityValue/100);
+      TerraMA2WebComponents.MapDisplay.updateLayerOpacity(layerId, opacityValue / 100);
+      Layers.setLayerOpacity(layerId, opacityValue / 100);
     };
 
     var setOpacitySlider = function(layerId, initialValue) {
-			var slider = $("#opacity" + layerId.replace(':','').split('.').join('\\.'));
-			var sliderParent = $(slider).parent();
+      var slider = $("#opacity" + layerId.replace(':', '').split('.').join('\\.'));
+      var sliderParent = $(slider).parent();
 
-			var label = $(sliderParent).find("label");
-			$(label).text("Opacity: " + initialValue + "%");
+      var label = $(sliderParent).find("label");
+      $(label).text(initialValue + "%");
 
-			$(slider).slider({
-				min: 0,
-				max: 100,
-				value: initialValue,
-				slide: function(event, ui) {
-					$(label).text("Opacity: " + ui.value + "%");
-				},
-				stop: function(event, ui) {                        
-					changeLayerOpacity(layerId, ui.value);
-				}       
-			});
+      $(slider).slider({
+        min: 0,
+        max: 100,
+        value: initialValue,
+        slide: function(event, ui) {
+          $(label).text(ui.value + "%");
+        },
+        stop: function(event, ui) {
+          changeLayerOpacity(layerId, ui.value);
+        }
+      });
     };
 
     var init = function() {
@@ -76,19 +74,19 @@ define(
         var self = $(this);
         var parentLi = $(self).parent();
         var parentId = $(parentLi).attr("data-layerid");
-        var layerName = parentId.split(':')[1];
-        var capability = sliderCapabilities.find(function(capability) { return capability.name === layerName; });
+        var layerObject = Layers.getLayerById(parentId);
+        var dateInfo = layerObject.dateInfo;
 
-        if (!capability) {
-          console.log("Capability not found...");
+        if(!dateInfo) {
+          console.log("Date info not found...");
           return;
         }
-        if (!capability.extent instanceof Array) {
-          console.log("Capability has not extent array.");
+        if(!dateInfo.dates instanceof Array) {
+          console.log("Date info has not dates array.");
           return;
         }
 
-        setSlider(capability.extent, parentId);
+        setSlider(dateInfo, parentId);
       });
 
       $("#terrama2-layerexplorer").on("click", "button[class~='close-slider']", function(e) {
@@ -97,7 +95,8 @@ define(
     };
 
     return {
-      insertIntoSliderCapabilities: insertIntoSliderCapabilities,
+      doSlide: doSlide,
+      changeLayerOpacity: changeLayerOpacity,
       setOpacitySlider: setOpacitySlider,
       init: init
     };

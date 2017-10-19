@@ -36,7 +36,8 @@
 #include <terrama2/core/utility/GeoUtils.hpp>
 
 
-#include "MockCollectorLogger.hpp"
+#include <terrama2/services/collector/mock/MockCollectorLogger.hpp>
+
 #include "IntRasterTs.hpp"
 
 #include <terrama2/Config.hpp>
@@ -58,9 +59,9 @@ void addInput(std::shared_ptr<terrama2::services::collector::core::DataManager> 
   terrama2::core::DataProviderPtr dataProviderPtr(dataProvider);
   dataProvider->id = 2;
   dataProvider->name = "DSA curso";
-  dataProvider->uri = "ftp://ftp:JenkinsD%40t%40@jenkins-ftp.dpi.inpe.br:21/terrama2/";
+  dataProvider->uri = "file://"+TERRAMA2_DATA_DIR+"/";
   dataProvider->intent = terrama2::core::DataProviderIntent::COLLECTOR_INTENT;
-  dataProvider->dataProviderType = "FTP";
+  dataProvider->dataProviderType = "FILE";
   dataProvider->active = true;
 
   dataManager->add(dataProviderPtr);
@@ -176,30 +177,31 @@ size_t write_response(void* ptr, size_t size, size_t nmemb, void* data)
 
 void downloadReferenceFiles()
 {
-  terrama2::core::CurlWrapperFtp curl;
-  std::string referenceUrl = "ftp://ftp:JenkinsD%40t%40@jenkins-ftp.dpi.inpe.br:21/terrama2/reference_data/";
 
-  try
-  {
-    curl.verifyURL(referenceUrl, 8);
-  }
-  catch(...)
-  {
-    QFAIL("FTP address is invalid.");
-  }
+  std::string referenceUrl = TERRAMA2_DATA_DIR+"/reference_data";
 
   std::string outDir = TERRAMA2_DATA_DIR+"/hidroestimador_crop_reference";
+
   QDir dir(QString::fromStdString(outDir));
   if(!dir.mkpath(QString::fromStdString(outDir)))
     QFAIL("Unable to create reference folder.");
 
-  std::vector<std::string> vectorFiles = curl.listFiles(te::core::URI(referenceUrl));
-  for(const auto& file : vectorFiles)
-  {
-    std::string fileUri = referenceUrl + file;
+  QFile filecopy;
 
-    std::string filePath = outDir + "/" + file;
-    curl.downloadFile(fileUri, filePath);
+  QDir  dir2(QString::fromStdString(referenceUrl));
+
+  QStringList filters;
+  filters << "*.tif";
+  dir2.setNameFilters(filters);
+
+
+  QStringList listFiles = dir2.entryList(QDir::Files);
+  for(const auto& file : listFiles)
+  {
+    std::string fileUri = referenceUrl + "/"  + file.toStdString();
+
+    std::string filePath = outDir + "/" + file.toStdString();
+    filecopy.copy(QString::fromStdString(fileUri), QString::fromStdString(filePath));
   }
 }
 
@@ -207,10 +209,6 @@ void IntRasterTs::CollectAndCropRaster()
 {
 
   auto& serviceManager = terrama2::core::ServiceManager::getInstance();
-  te::core::URI uri("pgsql://"+TERRAMA2_DATABASE_USERNAME+":"+TERRAMA2_DATABASE_PASSWORD+"@"+TERRAMA2_DATABASE_HOST+":"+TERRAMA2_DATABASE_PORT+"/"+TERRAMA2_DATABASE_DBNAME);
-  serviceManager.setLogConnectionInfo(uri);
-  serviceManager.setInstanceId(1);
-
   auto dataManager = std::make_shared<terrama2::services::collector::core::DataManager>();
   addInput(dataManager);
   addOutput(dataManager);
@@ -226,6 +224,7 @@ void IntRasterTs::CollectAndCropRaster()
   EXPECT_CALL(*loggerCopy, getDataLastTimestamp(::testing::_)).WillRepeatedly(::testing::Return(nullptr));
   EXPECT_CALL(*loggerCopy, done(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
   EXPECT_CALL(*loggerCopy, start(::testing::_)).WillRepeatedly(::testing::Return(0));
+  EXPECT_CALL(*loggerCopy, isValid()).WillRepeatedly(::testing::Return(true));
 
   auto logger = std::make_shared<terrama2::core::MockCollectorLogger>();
 
@@ -236,8 +235,15 @@ void IntRasterTs::CollectAndCropRaster()
   EXPECT_CALL(*logger, done(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
   EXPECT_CALL(*logger, start(::testing::_)).WillRepeatedly(::testing::Return(0));
   EXPECT_CALL(*logger, clone()).WillRepeatedly(::testing::Return(loggerCopy));
+  EXPECT_CALL(*logger, isValid()).WillRepeatedly(::testing::Return(true));
 
+  te::core::URI uri("pgsql://"+TERRAMA2_DATABASE_USERNAME+":"+TERRAMA2_DATABASE_PASSWORD+"@"+TERRAMA2_DATABASE_HOST+":"+TERRAMA2_DATABASE_PORT+"/"+TERRAMA2_DATABASE_DBNAME);
   logger->setConnectionInfo(uri);
+
+  serviceManager.setLogger(logger);
+  serviceManager.setLogConnectionInfo(uri);
+  serviceManager.setInstanceId(1);
+
   service.setLogger(logger);
   service.start();
 
@@ -265,6 +271,6 @@ void IntRasterTs::CollectAndCropRaster()
     QVERIFY2(reference == output, errMsg3.toUtf8());
   }
 
-   testOutput.removeRecursively();
-   testReference.removeRecursively();
+  testOutput.removeRecursively();
+  testReference.removeRecursively();
 }

@@ -53,6 +53,7 @@
 #include <terralib/raster/Grid.h>
 #include <terralib/raster/Band.h>
 #include <terralib/raster/BandIterator.h>
+#include <terralib/core/filesystem/FileSystem.h>
 
 #include <ctime>
 #include <unordered_map>
@@ -83,7 +84,7 @@ namespace te
 std::string terrama2::core::FindInTerraMA2Path(const std::string& fileName)
 {
   // 1st: look in the neighborhood of the executable
-  boost::filesystem::path tma_path = boost::filesystem::current_path();
+  boost::filesystem::path tma_path = te::core::FileSystem::executableDirectory();
 
   boost::filesystem::path eval_path = tma_path / fileName;
 
@@ -452,6 +453,11 @@ std::vector<std::shared_ptr<te::dt::DateTime> > terrama2::core::getAllDates(te::
   }
 
   return vecDates;
+}
+
+std::string terrama2::core::getDCPPositionsTableName(DataSeriesPtr dataSeries)
+{
+  return "dcp_series_"+std::to_string(dataSeries->id);
 }
 
 std::string terrama2::core::getMask(DataSetPtr dataSet)

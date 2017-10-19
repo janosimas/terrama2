@@ -49,6 +49,8 @@
 #include "../../../core/utility/ServiceManager.hpp"
 #include "../../../core/utility/FileRemover.hpp"
 
+#include "../../../core/Exception.hpp"
+
 terrama2::services::collector::core::Service::Service(std::weak_ptr<terrama2::services::collector::core::DataManager> dataManager)
   : dataManager_(dataManager)
 {
@@ -112,10 +114,14 @@ void terrama2::services::collector::core::Service::addToQueue(CollectorId collec
 
     mainLoopCondition_.notify_one();
   }
+  catch(const terrama2::core::LogException&)
+  {
+    TERRAMA2_LOG_ERROR() << QObject::tr("Unable to access log database.");
+  }
   catch(...)
   {
     // exception guard, slots should never emit exceptions.
-    TERRAMA2_LOG_ERROR() << QObject::tr("Unknown exception...");
+    TERRAMA2_LOG_ERROR() << QObject::tr("Unknown exception durring collector edd to queue...");
   }
 }
 
@@ -160,16 +166,17 @@ void terrama2::services::collector::core::Service::collect(terrama2::core::Execu
     auto processingStartTime = terrama2::core::TimeUtils::nowUTC();
 
     terrama2::core::Filter filter = collectorPtr->filter;
-    //update filter based on last collected data timestamp
-    std::shared_ptr<te::dt::TimeInstantTZ> lastCollectedDataTimestamp = logger->getDataLastTimestamp(executionPackage.processId);
-
-    if(lastCollectedDataTimestamp.get() && filter.discardBefore.get())
+    if(filter.discardAfter.get() && filter.discardBefore.get()
+        && (*filter.discardAfter) < (*filter.discardBefore))
     {
-      if(filter.discardBefore < lastCollectedDataTimestamp)
-        filter.discardBefore = lastCollectedDataTimestamp;
+      QString errMsg = QObject::tr("Empty filter time range.");
+
+      TERRAMA2_LOG_WARNING() << errMsg.toStdString();
+      throw terrama2::core::NoDataException() << ErrorDescription(errMsg);
     }
-    else if(lastCollectedDataTimestamp.get())
-      filter.discardBefore = lastCollectedDataTimestamp;
+
+    //update filter based on last collected data timestamp
+    updateFilterDiscardDates(filter, logger, executionPackage.processId);
 
     auto remover = std::make_shared<terrama2::core::FileRemover>();
     auto dataAccessor = terrama2::core::DataAccessorFactory::getInstance().make(inputDataProvider, inputDataSeries);
@@ -198,7 +205,7 @@ void terrama2::services::collector::core::Service::collect(terrama2::core::Execu
       if(collectorPtr->intersection)
       {
         //FIXME: the datamanager is being used outside the lock
-        item.second = processIntersection(dataManager, collectorPtr->intersection, item.second);
+        item.second = processIntersection(dataManager, collectorPtr->intersection, item.second, executionPackage.executionDate);
       }
     }
 
@@ -234,7 +241,7 @@ void terrama2::services::collector::core::Service::collect(terrama2::core::Execu
       TERRAMA2_LOG_INFO() << tr("Collection for collector %1 finished with error(s).").arg(executionPackage.processId);
     }
   }
-  catch(const terrama2::core::NoDataException& e)
+  catch(const terrama2::core::NoDataException&)
   {
     TERRAMA2_LOG_INFO() << tr("Collection finished but there was no data available for collector %1.").arg(executionPackage.processId);
 
@@ -363,7 +370,7 @@ void terrama2::services::collector::core::Service::updateCollector(CollectorPtr 
   addProcessToSchedule(collector);
 }
 
-void terrama2::services::collector::core::Service::updateAdditionalInfo(const QJsonObject& obj) noexcept
+void terrama2::services::collector::core::Service::updateAdditionalInfo(const QJsonObject& /*obj*/) noexcept
 {
 
 }

@@ -161,7 +161,11 @@ FtpRequest.fields = function() {
     {
       key: UriPattern.HOST,
       type: FormField.TEXT,
-      htmlClass: 'col-md-5 terrama2-schema-form'
+      htmlClass: 'col-md-5 terrama2-schema-form',
+      validationMessage: {
+        "202": "Invalid address"
+      },
+      ngModelOptions: { "updateOn": "blur" }
     },
     {
       key: UriPattern.PORT,

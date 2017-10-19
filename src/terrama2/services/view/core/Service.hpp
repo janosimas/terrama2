@@ -62,6 +62,8 @@ namespace terrama2
           Service& operator=(const Service& other) = delete;
           Service& operator=(Service&& other) = default;
 
+          virtual void getStatus(QJsonObject& obj) const override;
+
         public slots:
 
           //! Slot to be called when a DataSetTimer times out.
@@ -77,15 +79,23 @@ namespace terrama2
           /*!
             \brief Removes the View.
 
-            Rennuning processes will continue until finished.
+            Running processes will continue until finished.
           */
-          void removeView(ViewId viewId) noexcept;
+          void removeView(ViewId id, DataSeriesId dataSeriesId) noexcept;
 
           /*!
            * \brief Receive a jSon and update service information with it
            * \param obj jSon with additional information for service
            */
           virtual void updateAdditionalInfo(const QJsonObject& obj) noexcept override;
+
+        private:
+          /*!
+           * \brief Removes View from memory and tries to remove entire workspace of GeoServer
+           * \param viewId View identifier
+           * \param removeAll Flag to remove everything. It includes both geoserver workspace as table metadata. Default "true"
+           */
+          void removeCompleteView(ViewId id, DataSeriesId dataSeriesId, bool removeAll = true) noexcept;
 
         protected:
 
@@ -107,6 +117,7 @@ namespace terrama2
 
           std::weak_ptr<DataManager> dataManager_; //!< Weak pointer to the DataManager
           te::core::URI mapsServerUri_;
+          bool mapsServerConnectionStatus_ = false;
         };
 
       } // end namespace core

@@ -7,6 +7,7 @@
   var View = require("./View");
   var URIBuilder = require("./../UriBuilder");
   var DataSeriesType = require("./../Enums").DataSeriesType;
+  var DataSeriesFormat = require("./../Enums").DataSeriesFormat;
   var ViewSourceType = require("./../Enums").ViewSourceType;
   /**
    * Default URI syntax
@@ -147,21 +148,62 @@
    */
   RegisteredView.prototype.toObject = function() {
     var uriObject = URIBuilder.buildObject(this.uri, URISyntax);
-    var uri = Utils.format("%s://%s:%s%s", uriObject[URISyntax.SCHEME].toLowerCase(),
-                                         uriObject[URISyntax.HOST],
-                                         uriObject[URISyntax.PORT],
-                                         uriObject[URISyntax.PATHNAME]);
+
+    if(!isNaN(uriObject[URISyntax.PORT])) {
+      var uri = Utils.format(
+        "%s://%s:%s%s",
+        uriObject[URISyntax.SCHEME].toLowerCase(),
+        uriObject[URISyntax.HOST],
+        uriObject[URISyntax.PORT],
+        uriObject[URISyntax.PATHNAME]
+      );
+    } else {
+      var uri = Utils.format(
+        "%s://%s%s",
+        uriObject[URISyntax.SCHEME].toLowerCase(),
+        uriObject[URISyntax.HOST],
+        uriObject[URISyntax.PATHNAME]
+      );
+    }
 
     var params = {};
     var dataSeriesTypeName;
-    if (this.dataSeries) {
+    var exportation = {
+      data: null,
+      error: null
+    };
+
+    if(this.dataSeries) {
       var semantics = this.dataSeries.data_series_semantics;
-      if (semantics && semantics.data_series_type_name === DataSeriesType.GRID) {
+
+      if(semantics && semantics.data_series_type_name === DataSeriesType.GRID) {
         var mask = this.dataSeries.dataSets[0].format.mask;
         params.mask = mask;
       }
-      if (this.dataSeries.data_series_semantics)
+
+      if(this.dataSeries.data_series_semantics) {
         dataSeriesTypeName = this.dataSeries.data_series_semantics.data_series_type_name;
+
+        if(this.dataSeries.data_series_semantics.data_format_name === DataSeriesFormat.POSTGIS || this.dataSeries.data_series_semantics.code === "GRID-static_gdal" || this.dataSeries.data_series_semantics.code === "GRID-geotiff") {
+          if(this.dataSeries.dataSets.length > 1 || this.dataSeries.dataSets.length === 0) {
+            exportation.error = "Invalid data sets!";
+          } else {
+            if(this.dataSeries.data_series_semantics.code === "GRID-static_gdal" || this.dataSeries.data_series_semantics.code === "GRID-geotiff") {
+              exportation.data = {
+                dataProviderId: this.dataSeries.dataProvider.id,
+                mask: this.dataSeries.dataSets[0].format.mask
+              };
+            } else {
+              exportation.data = {
+                dataProviderId: this.dataSeries.dataProvider.id,
+                schema: "public",
+                table: this.dataSeries.dataSets[0].format.table_name,
+                dateField: (this.dataSeries.dataSets[0].format.timestamp_property !== undefined ? this.dataSeries.dataSets[0].format.timestamp_property : null)
+              };
+            }
+          }
+        }
+      }
     }
 
     return Object.assign(AbstractClass.prototype.toObject.call(this), {
@@ -177,7 +219,8 @@
       type: this.dataSeriesType,
       params: params,
       projectId: this.view.projectId,
-      dataSeriesTypeName: dataSeriesTypeName
+      dataSeriesTypeName: dataSeriesTypeName,
+      exportation: exportation
     });
   };
 

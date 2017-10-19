@@ -29,7 +29,7 @@ define([], function(){
    *
    * @param {any} i18n - TerraMA² Internationalization module
    */
-    function StoragerController($scope, i18n, DataSeriesSemanticsService, GeoLibs, SemanticsParserFactory, $timeout, $window, Service, $http, $compile, FormTranslator){
+    function StoragerController($scope, i18n, DataSeriesSemanticsService, GeoLibs, SemanticsParserFactory, $timeout, $window, Service, $http, $compile, FormTranslator, Socket){
       var self = this;
       self.i18n = i18n;
       self.formStorager = [];
@@ -63,6 +63,7 @@ define([], function(){
             return BASE_URL + "images/data-server/postGIS/postGIS.png";
             break;
           case 'HTTP':
+          case "HTTPS":
             return BASE_URL + "images/data-server/http/http.png";
             break;
           case 'FTP':
@@ -162,6 +163,11 @@ define([], function(){
           }, true);
         }
       }
+
+      $scope.$watch("$ctrl.storager_service", function(serviceId){
+        if (serviceId)
+          Socket.emit('status', {service: serviceId});
+      }, true);
 
       $scope.$watch(function(){
           return self.series.semantics.data_series_type_name;
@@ -405,6 +411,7 @@ define([], function(){
               break;
             case "GRID":
             case "OCCURRENCE":
+            case "GEOMETRIC_OBJECT":
               $scope.$emit("storageValuesReceive", {
                 data: self.modelStorager,
                 data_provider: self['storager_data_provider_id'],
@@ -562,7 +569,7 @@ define([], function(){
           var copyFormat = angular.merge({}, self.series.semantics.metadata.metadata);
           angular.merge(copyFormat, self.model);
           // if geotiff - add .tif extension
-          if (self.series.semantics.code == "GRID-geotiff"){
+          if (self.storager.format.code == "GRID-geotiff" && copyFormat.mask){
             if (!copyFormat.mask.endsWith(".tif")){
               if (copyFormat.mask.indexOf(".") > -1){
                 copyFormat.mask = copyFormat.mask.slice(0, copyFormat.mask.indexOf("."));
@@ -672,7 +679,7 @@ define([], function(){
           var formTranslatorResult = FormTranslator(metadata.schema.properties, metadata.form, metadata.schema.required);
 
           // if semantics is geotiff, complete the mask with .tif extension
-          if (self.series.semantics.code == "GRID-geotiff"){
+          if (self.storager.format.code == "GRID-geotiff"){
             formTranslatorResult.display[0].onChange = function(modelValue,form){
               if (modelValue){
                 if (!modelValue.endsWith(".tif")){
@@ -709,6 +716,6 @@ define([], function(){
       });
     }
 
-    StoragerController.$inject = ['$scope', 'i18n', 'DataSeriesSemanticsService', 'GeoLibs', 'SemanticsParserFactory', '$timeout', '$window', 'Service', '$http', '$compile', 'FormTranslator'];
+    StoragerController.$inject = ['$scope', 'i18n', 'DataSeriesSemanticsService', 'GeoLibs', 'SemanticsParserFactory', '$timeout', '$window', 'Service', '$http', '$compile', 'FormTranslator', 'Socket'];
     return terrama2StoragerComponent;
 });

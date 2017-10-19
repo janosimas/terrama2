@@ -17,9 +17,11 @@ define(function() {
       }
     }
 
-    if (conf.dataProvider.data_provider_type_name == 'FTP'){
-      model['active_mode'] = conf.dataProvider.active_mode;
+    if(conf.dataProvider.data_provider_type_name == 'FTP' || conf.dataProvider.data_provider_type_name == 'HTTP' || conf.dataProvider.data_provider_type_name == 'HTTPS') {
       model['timeout'] = conf.dataProvider.timeout;
+
+      if(conf.dataProvider.data_provider_type_name == 'FTP')
+        model['active_mode'] = conf.dataProvider.active_mode;
     }
 
     // forcing port value to number
@@ -34,6 +36,8 @@ define(function() {
       boxType: "box-solid"
     }
 
+    $scope.originalPasswords = {};
+
     $timeout(function() {
       if(conf.fields) {
         if(conf.fields.display) {
@@ -43,6 +47,16 @@ define(function() {
         } else {
           var propertiesLocale = FormTranslator(conf.fields.properties);
           var fieldsForm = [];
+        }
+
+        if($scope.configuration.isEditing) {
+          fieldsForm.forEach(function(field) {
+            if(field.hasOwnProperty('type') && field.type === "password") {
+              field.placeholder = i18n.__("Insert a value if you want to update the password");
+              $scope.originalPasswords[field.key] = model[field.key];
+              model[field.key] = "";
+            }
+          });
         }
 
         $scope.schema = {
@@ -95,6 +109,12 @@ define(function() {
       protocol: conf.dataProvider.data_provider_type_name
     };
 
+    var hasProjectPermission = conf.hasProjectPermission;
+    
+    if ($scope.isEditing && !hasProjectPermission){
+      MessageBoxService.danger(i18n.__("Permission"), i18n.__("You can not edit this data server. He belongs to a protected project!"));
+    }
+
     $scope.initActive = function() {
       $scope.dataProvider.active = (conf.dataProvider.active === false || conf.dataProvider.active) ? conf.dataProvider.active : true;
     };
@@ -105,6 +125,20 @@ define(function() {
           // temp code for port changing
           if(dataProviderType.display) {
             var formTranslatorResult = FormTranslator(dataProviderType.properties, dataProviderType.display, dataProviderType.required);
+            formTranslatorResult.display.some(function(display){
+              if (display.key == "hostname"){
+                display.onChange = function(modelValue,form){
+                  if (modelValue){
+                    if (modelValue.endsWith("/"))
+                      modelValue = modelValue.slice(0, -1);
+                      
+                    $scope.model.hostname = modelValue;
+                  }
+                }
+                return true;
+              }
+              return false;
+            });
             var propertiesLocale = formTranslatorResult.object;
             var fieldsForm = formTranslatorResult.display;
           } else {
@@ -149,9 +183,17 @@ define(function() {
     var getDatabaseList = function(){
       var result = $q.defer();
 
-      var params = $scope.model;
+      var params = angular.copy($scope.model);
       params.protocol = $scope.dataProvider.protocol;
       params.objectToGet = "database";
+
+      if($scope.configuration.isEditing) {
+        for(key in params) {
+          if($scope.originalPasswords.hasOwnProperty(key) && !params[key]) {
+            params[key] = $scope.originalPasswords[key];
+          }
+        }
+      }
 
       var httpRequest = $http({
         method: "GET",
@@ -179,6 +221,11 @@ define(function() {
 
     $scope.save = function() {
       $scope.close();
+
+      if ($scope.isEditing && !hasProjectPermission){
+        return MessageBoxService.danger(i18n.__("Permission"), i18n.__("You can not edit this data server. He belongs to a protected project!"));
+      }
+
       $scope.$broadcast("formFieldValidation");
 
       // calling auto generate form validation
@@ -191,6 +238,14 @@ define(function() {
 
       var formData = $scope.dataProvider;
       formData.uriObject = Object.assign({protocol: $scope.dataProvider.protocol}, $scope.model);
+
+      if($scope.configuration.isEditing) {
+        for(key in formData.uriObject) {
+          if($scope.originalPasswords.hasOwnProperty(key) && !formData.uriObject[key]) {
+            formData.uriObject[key] = $scope.originalPasswords[key];
+          }
+        }
+      }
 
       $http({
         url: conf.saveConfig.url,
@@ -227,7 +282,7 @@ define(function() {
       $scope.isChecking = true; // for handling loading page
 
       // Timeout in seconds for handling connections
-      $scope.timeOutSeconds = 8;
+      $scope.timeOutSeconds = $scope.model.timeout ? $scope.model.timeout : 8;
 
       // Function for requests success, error and timeout
       var makeRequest = function() {
@@ -239,8 +294,17 @@ define(function() {
           timeOut.resolve();
         }, 1000 * $scope.timeOutSeconds);
 
-        var params = $scope.model;
+        var params = angular.copy($scope.model);
         params.protocol = $scope.dataProvider.protocol;
+        params.objectToGet = "database";
+
+        if($scope.configuration.isEditing) {
+          for(key in params) {
+            if($scope.originalPasswords.hasOwnProperty(key) && !params[key]) {
+              params[key] = $scope.originalPasswords[key];
+            }
+          }
+        }
 
         var httpRequest = $http({
           method: "POST",

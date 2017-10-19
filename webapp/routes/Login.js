@@ -20,7 +20,9 @@ module.exports = function(app) {
         if(e)
           return next(e);
 
-        app.locals.collapsed = false;
+        request.session.collapsed = false;
+        request.session.activeProject = {};
+
         return response.redirect(app.locals.BASE_URL + 'firstAccess')
       })
     })(request, response, next);
@@ -44,7 +46,8 @@ module.exports = function(app) {
           email: userObj.email,
           cellphone: userObj.cellphone,
           username: userObj.username,
-          administrator: userObj.administrator
+          administrator: userObj.administrator,
+          token: userObj.token
         };
 
         return response.json({

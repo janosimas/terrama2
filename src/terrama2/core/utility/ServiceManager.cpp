@@ -22,7 +22,9 @@
 */
 
 #include "TimeUtils.hpp"
+#include "Utils.hpp"
 #include "ServiceManager.hpp"
+#include "Service.hpp"
 #include "../../Version.hpp"
 
 terrama2::core::ServiceManager::ServiceManager()
@@ -50,6 +52,27 @@ void terrama2::core::ServiceManager::setInstanceId(ServiceInstanceId instanceId)
   instanceId_ = instanceId;
   serviceLoaded_ = true;
 }
+
+void terrama2::core::ServiceManager::setLogger(std::shared_ptr<terrama2::core::ProcessLogger> logger)
+{
+  if(!logger)
+  {
+    throw std::invalid_argument(tr("Error registering logger.").toStdString());
+  }
+
+  logger_ = logger;
+}
+
+void terrama2::core::ServiceManager::setService(std::shared_ptr<terrama2::core::Service> service)
+{
+  if(!service)
+  {
+    throw std::invalid_argument(tr("Error registering service.").toStdString());
+  }
+
+  service_ = service;
+}
+
 ServiceInstanceId terrama2::core::ServiceManager::instanceId() const
 {
   return instanceId_;
@@ -77,7 +100,10 @@ int terrama2::core::ServiceManager::listeningPort() const
 void terrama2::core::ServiceManager::setNumberOfThreads(int numberOfThreads)
 {
   numberOfThreads_ = numberOfThreads;
-  emit numberOfThreadsUpdated(static_cast<size_t>(numberOfThreads_));
+  auto service = service_.lock();
+  //update number of threads
+  if(service)
+    service->updateNumberOfThreads(static_cast<size_t>(numberOfThreads_));
 }
 int terrama2::core::ServiceManager::numberOfThreads() const
 {
@@ -97,9 +123,16 @@ QJsonObject terrama2::core::ServiceManager::status() const
   {
     obj.insert("instance_id", static_cast<int>(instanceId()));
     obj.insert("instance_name", QString::fromStdString(instanceName()));
-    obj.insert("start_time", QString::fromStdString(startTime_->toString()));
+    obj.insert("start_time", QString::fromStdString(TimeUtils::getISOString(startTime_)));
     obj.insert("terrama2_version",  QString::fromStdString(TERRAMA2_VERSION_STRING));
     obj.insert("shutting_down",  isShuttingDown_);
+    obj.insert("logger_online",  logger_.lock()->isValid());
+  }
+
+  auto service = service_.lock();
+  if(service)
+  {
+    service->getStatus(obj);
   }
 
   return obj;
@@ -131,7 +164,11 @@ void terrama2::core::ServiceManager::updateService(const QJsonObject& obj)
 void terrama2::core::ServiceManager::setLogConnectionInfo(const te::core::URI& logDbUri)
 {
   logDbUri_ = logDbUri;
-  emit logConnectionInfoUpdated(logDbUri);
+  auto logger = logger_.lock();
+  if(!logger)
+    throw std::runtime_error(tr("Error: no logger registered.").toStdString());
+
+  logger->setConnectionInfo(logDbUri);
 }
 
 te::core::URI terrama2::core::ServiceManager::logConnectionInfo() const
