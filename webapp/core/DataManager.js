@@ -147,6 +147,22 @@ var DataManager = module.exports = {
         //inserts.push(self.addDataProviderType({id: 5, name: "SFTP", description: "Desc SFTP"}));
         inserts.push(self.addDataProviderType({id: 6, name: "HTTPS", description: "Desc Https"}));
 
+        var listVersionsPromise = self.listVersions({}).then(function(versions) {
+          if(versions.length == 0 ) {
+            var versionFile = require('../../share/terrama2/version.json');
+
+            self.addVersion({
+              major: versionFile.major,
+              minor: versionFile.minor,
+              patch: versionFile.patch,
+              tag: versionFile.tag,
+              database: versionFile.database
+            });
+          }
+        });
+
+        inserts.push(listVersionsPromise);
+
         var listServicesPromise = self.listServiceInstances({}).then(function(services){
           var servicesInsert = [];
           if (services.length == 0 ){
@@ -197,8 +213,8 @@ var DataManager = module.exports = {
           }
           return Promise.all(servicesInsert);
         });
-        inserts.push(listServicesPromise);
 
+        inserts.push(listServicesPromise);
 
         // data provider intent defaults
         inserts.push(models.db.DataProviderIntent.create({
@@ -434,77 +450,91 @@ var DataManager = module.exports = {
       };
 
       return models.db.Project.findAll({}).then(function(projects) {
-        projects.forEach(function(project) {
-          self.data.projects.push(project.get());
-        });
+        return models.db.User.findAll({}).then(function(users) {
+          projects.forEach(function(project) {
+            var projectObj = project.get();
+            var userObj = null;
 
-        return models.db.DataProvider.findAll({ include: [ models.db.DataProviderType, models.db.DataProviderOptions ] }).then(function(dataProviders) {
-          dataProviders.forEach(function(dataProvider) {
-            self.data.dataProviders.push(new DataModel.DataProvider(dataProvider));
-          });
-          // find all data series, providers
-          return models.db.DataSeries.findAll({
-            include: [
-              {
-                model: models.db.DataProvider,
-                include: [models.db.DataProviderType]
-              },
-              models.db.DataSeriesSemantics,
-              {
-                model: models.db.DataSet,
-                include: [
-                  {
-                    model: models.db.DataSetDcp,
-                    attributes: [
-                      // retrieving GeoJSON. Its is important because Sequelize
-                      // orm does not retrieve SRID even geometry has. The "2"
-                      // in arguments is to retrieve entire representation.
-                      // It retrieves as string. Once GeoJSON retrieved,
-                      // you must parse it. "JSON.parse(geoJsonStr)"
-                      [orm.fn('ST_AsGeoJSON', orm.col('position'), 15, 2), 'position'],
-                      // EWKT representation
-                      [orm.fn('ST_AsEwkt', orm.col('position')), 'positionWkt']
-                    ],
-                    required: false
-                  },
-                  {
-                    model: models.db.DataSetOccurrence,
-                    required: false
-                  },
-                  {
-                    model: models.db.DataSetMonitored,
-                    required: false
-                  },
-                  {
-                    model: models.db.DataSetGrid,
-                    required: false
-                  },
-                  models.db.DataSetFormat
-                ]
+            users.forEach(function(user) {
+              if(user.dataValues.id === projectObj.user_id) {
+                userObj = user.get();
+                return;
               }
-            ]
-          }).then(function(dataSeries) {
-            var semanticsList = Application.get("semantics");
-            dataSeries.forEach(function(dSeries) {
-              var provider = new DataModel.DataProvider(dSeries.DataProvider.get());
-
-              var builtDataSeries = new DataModel.DataSeries(dSeries.get());
-              builtDataSeries.setDataProvider(provider);
-
-              builtDataSeries.dataSets.forEach(function(dSet) {
-                self.data.dataSets.push(dSet);
-              });
-              var semantic = semanticsList.find(function(dSeriesSemantic){
-                return dSeries.DataSeriesSemantic.code == dSeriesSemantic.code;
-              });
-              Object.assign(builtDataSeries.data_series_semantics, semantic);
-              builtDataSeries.semantics = builtDataSeries.data_series_semantics;
-              self.data.dataSeries.push(builtDataSeries);
             });
 
-            self.isLoaded = true;
-            return resolve();
+            projectObj.user_name = userObj.name;
 
+            self.data.projects.push(projectObj);
+          });
+
+          return models.db.DataProvider.findAll({ include: [ models.db.DataProviderType, models.db.DataProviderOptions ] }).then(function(dataProviders) {
+            dataProviders.forEach(function(dataProvider) {
+              self.data.dataProviders.push(new DataModel.DataProvider(dataProvider));
+            });
+            // find all data series, providers
+            return models.db.DataSeries.findAll({
+              include: [
+                {
+                  model: models.db.DataProvider,
+                  include: [models.db.DataProviderType]
+                },
+                models.db.DataSeriesSemantics,
+                {
+                  model: models.db.DataSet,
+                  include: [
+                    {
+                      model: models.db.DataSetDcp,
+                      attributes: [
+                        // retrieving GeoJSON. Its is important because Sequelize
+                        // orm does not retrieve SRID even geometry has. The "2"
+                        // in arguments is to retrieve entire representation.
+                        // It retrieves as string. Once GeoJSON retrieved,
+                        // you must parse it. "JSON.parse(geoJsonStr)"
+                        [orm.fn('ST_AsGeoJSON', orm.col('position'), 15, 2), 'position'],
+                        // EWKT representation
+                        [orm.fn('ST_AsEwkt', orm.col('position')), 'positionWkt']
+                      ],
+                      required: false
+                    },
+                    {
+                      model: models.db.DataSetOccurrence,
+                      required: false
+                    },
+                    {
+                      model: models.db.DataSetMonitored,
+                      required: false
+                    },
+                    {
+                      model: models.db.DataSetGrid,
+                      required: false
+                    },
+                    models.db.DataSetFormat
+                  ]
+                }
+              ]
+            }).then(function(dataSeries) {
+              var semanticsList = Application.get("semantics");
+              dataSeries.forEach(function(dSeries) {
+                var provider = new DataModel.DataProvider(dSeries.DataProvider.get());
+
+                var builtDataSeries = new DataModel.DataSeries(dSeries.get());
+                builtDataSeries.setDataProvider(provider);
+
+                builtDataSeries.dataSets.forEach(function(dSet) {
+                  self.data.dataSets.push(dSet);
+                });
+                var semantic = semanticsList.find(function(dSeriesSemantic){
+                  return dSeries.DataSeriesSemantic.code == dSeriesSemantic.code;
+                });
+                Object.assign(builtDataSeries.data_series_semantics, semantic);
+                builtDataSeries.semantics = builtDataSeries.data_series_semantics;
+                self.data.dataSeries.push(builtDataSeries);
+              });
+
+              self.isLoaded = true;
+              return resolve();
+
+            }).catch(_rejectClean);
           }).catch(_rejectClean);
         }).catch(_rejectClean);
       }).catch(_rejectClean);
@@ -542,8 +572,22 @@ var DataManager = module.exports = {
     var self = this;
     return new Promise(function(resolve, reject){
       models.db.Project.create(projectObject, Utils.extend({}, options)).then(function(project){
-        self.data.projects.push(project.get());
-        return resolve(Utils.clone(project.get()));
+        models.db.User.findAll({}).then(function(users) {
+          var projectObj = project.get();
+          var userObj = null;
+
+          users.forEach(function(user) {
+            if(user.dataValues.id === projectObj.user_id) {
+              userObj = user.get();
+              return;
+            }
+          });
+
+          projectObj.user_name = userObj.name;
+
+          self.data.projects.push(projectObj);
+          return resolve(Utils.clone(projectObj));
+        });
       }).catch(function(e) {
         var message = "Could not save project: ";
         if (e.errors) { message += e.errors[0].message; }
@@ -1658,6 +1702,30 @@ var DataManager = module.exports = {
   },
 
   /**
+   * It changes the status of a given data provider
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object} options - An ORM query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   */
+  changeDataProviderStatus: function(restriction, options) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      var dataProvider = Utils.find(self.data.dataProviders, restriction);
+      dataProvider.active = !dataProvider.active;
+
+      return models.db.DataProvider.update(dataProvider, Utils.extend({
+        fields: ["active"],
+        where: restriction
+      }, options)).then(function() {
+        return resolve(dataProvider);
+      }).catch(function(err) {
+        return reject(new Error("Could not change data provider status " + err.toString()));
+      });
+    })
+  },
+
+  /**
    * It removes DataProvider from param. It should be an object containing either id identifier or
    * name identifier.
    *
@@ -1984,7 +2052,7 @@ var DataManager = module.exports = {
           if(dataSeriesObject.removedDcps !== undefined) {
             dataSeriesObject.removedDcps.forEach(function(dataSetIdToRemove) {
               dataSeries.dataSets.forEach(function(completeDataSet) {
-                if(completeDataSet.format._id == dataSetIdToRemove) {
+                if(parseInt(completeDataSet.format._id) == parseInt(dataSetIdToRemove)) {
                   var removeProvider = self.removeDataSet(completeDataSet).then(function(returned) {
                     var index = dataSeries.dataSets.indexOf(returned);
                     if(index > -1)
@@ -2000,7 +2068,7 @@ var DataManager = module.exports = {
             if (dataSeriesObject.dataSets.length < dataSeries.dataSets.length){
               dataSeries.dataSets.forEach(function(dataSetToRemove){
                 var dontRemove = dataSeriesObject.dataSets.some(function(dataSetToCompare){
-                  return dataSetToCompare.format._id == dataSetToRemove.format._id;
+                  return parseInt(dataSetToCompare.format._id) == parseInt(dataSetToRemove.format._id);
                 });
                 if (!dontRemove){
                   dataSetsToRemove.push(dataSetToRemove);
@@ -2022,7 +2090,7 @@ var DataManager = module.exports = {
 
           (dataSeriesObject.editedDcps !== undefined ? dataSeriesObject.editedDcps : dataSeriesObject.dataSets).forEach(function(newDataSet) {
             var dataSetToUpdate = dataSeries.dataSets.find(function(dSet){
-              return dSet.format._id == newDataSet.format._id;
+              return parseInt(dSet.format._id) == parseInt(newDataSet.format._id);
             });
             // Update data set
             if(dataSetToUpdate) {
@@ -2080,6 +2148,118 @@ var DataManager = module.exports = {
         }).catch(function(err) {
           return reject(new exceptions.DataSeriesError(Utils.format("Could not update data series %s", err.toString()), err.errors));
         });
+    });
+  },
+
+  /**
+   * It changes the status of a given dynamic data series
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object} options - An ORM query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   */
+  changeDynamicDataSeriesStatus: function(restriction, options) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      var dataSeries = Utils.find(self.data.dataSeries, restriction);
+      dataSeries.active = !dataSeries.active;
+
+      var dataSets = Utils.filter(self.data.dataSets, { data_series_id: restriction.id });
+
+      var objectToSend = {
+        "DataSeries": [dataSeries.toObject()]
+      };
+
+      var analysisPromises = [];
+
+      return models.db.DataSeries.update(dataSeries, Utils.extend({
+        fields: ["active"],
+        where: restriction
+      }, options)).then(function() {
+        dataSets.forEach(function(dataSet) {
+          analysisPromises.push(self.getAnalysisAcceptNull({ dataset_output: dataSet.id }));
+        });
+
+        return Promise.all(analysisPromises);
+      }).then(function(results) {
+        analysisPromises = [];
+
+        results.forEach(function(analysis) {
+          if(analysis) {
+            if(!objectToSend.Analysis) objectToSend.Analysis = [];
+
+            analysis.active = dataSeries.active;
+
+            objectToSend.Analysis.push(analysis.toObject());
+
+            analysisPromises.push(
+              models.db.Analysis.update(analysis, Utils.extend({
+                fields: ["active"],
+                where: { id: analysis.id }
+              }, options))
+            );
+          }
+        });
+
+        return Promise.all(analysisPromises);
+      }).then(function() {
+        return self.getCollectorAcceptNull({ data_series_output: restriction.id }, options);
+      }).then(function(collector) {
+        if(collector) {
+          collector.active = dataSeries.active;
+
+          return models.db.Collector.update(collector, Utils.extend({
+            fields: ["active"],
+            where: { id: collector.id }
+          }, options)).then(function() {
+            var dataSeriesInput = Utils.find(self.data.dataSeries, { id: collector.data_series_input });
+
+            dataSeriesInput.active = dataSeries.active;
+
+            objectToSend.DataSeries.push(dataSeriesInput.toObject());
+
+            return models.db.DataSeries.update(dataSeriesInput, Utils.extend({
+              fields: ["active"],
+              where: { id: dataSeriesInput.id }
+            }, options));
+          }).then(function() {
+            objectToSend.Collectors = [collector.toObject()];
+
+            return resolve(objectToSend);
+          }).catch(function(err) {
+            return reject(new Error("Could not change data series status " + err.toString()));
+          });
+        } else {
+          return resolve(objectToSend);
+        }
+      }).catch(function(err) {
+        return reject(new Error("Could not change data series status " + err.toString()));
+      });
+    });
+  },
+
+  /**
+   * It changes the status of a given static data series
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object} options - An ORM query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   */
+  changeStaticDataSeriesStatus: function(restriction, options) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      var dataSeries = Utils.find(self.data.dataSeries, restriction);
+
+      dataSeries.active = !dataSeries.active;
+
+      return models.db.DataSeries.update(dataSeries, Utils.extend({
+        fields: ["active"],
+        where: restriction
+      }, options)).then(function() {
+        return resolve(dataSeries);
+      }).catch(function(err) {
+        return reject(new Error("Could not change data series status " + err.toString()));
+      });
     });
   },
 
@@ -2515,7 +2695,9 @@ var DataManager = module.exports = {
    * @return {Promise<Schedule>}
    */
   addSchedule: function(scheduleObject, options) {
+    var self = this;
     return new Promise(function(resolve, reject) {
+      var schedule;
       if (scheduleObject.scheduleType == Enums.ScheduleType.AUTOMATIC){
         models.db.AutomaticSchedule.create(scheduleObject, options).then(function(schedule) {
           return resolve(new DataModel.AutomaticSchedule(schedule.get()));
@@ -2524,8 +2706,20 @@ var DataManager = module.exports = {
           return reject(new exceptions.ScheduleError("Could not save schedule. " + err.toString()));
         });
       } else if (scheduleObject.scheduleType == Enums.ScheduleType.SCHEDULE || scheduleObject.scheduleType == Enums.ScheduleType.REPROCESSING_HISTORICAL){
-        models.db.Schedule.create(scheduleObject, options).then(function(schedule) {
-          return resolve(new DataModel.Schedule(schedule.get()));
+        models.db.Schedule.create(scheduleObject, options).then(function(scheduleResult) {
+          schedule = scheduleResult;
+          // checking if there is historical data to save
+          if (_.isEmpty(scheduleObject.historical) || (!scheduleObject.historical.startDate || !scheduleObject.historical.endDate)) {
+            return null;
+          }
+          return self.addHistoricalData(schedule.id, scheduleObject.historical, options);
+
+        }).then(function(historicalResult){
+          var scheduleModel = new DataModel.Schedule(schedule.get());
+          scheduleModel.setHistoricalData(historicalResult);
+
+          return resolve(scheduleModel);
+
         }).catch(function(err) {
           // todo: improve error message
           return reject(new exceptions.ScheduleError("Could not save schedule. " + err.toString()));
@@ -2636,7 +2830,12 @@ var DataManager = module.exports = {
     var self = this;
     return new Promise(function(resolve, reject) {
       models.db.Schedule.findOne(Utils.extend({
-        where: restriction || {}
+
+        where: restriction || {},
+        include: [{
+          model: models.db.ReprocessingHistoricalData,
+          required: false
+        }]
       }, options)).then(function(schedule) {
         if (schedule) {
           return resolve(new DataModel.Schedule(schedule.get()));
@@ -3021,6 +3220,68 @@ var DataManager = module.exports = {
   },
 
   /**
+   * It retrieves a collector of database from given restriction. If no collector is found, a null value is returned.
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object} options - A query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   * @returns {Promise<Collector>}
+   */
+  getCollectorAcceptNull: function(restriction, options) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      var restrictionOutput = {};
+      if (restriction.output) {
+        Object.assign(restrictionOutput, restriction.output);
+        delete restriction.output;
+      }
+
+      models.db.Collector.findOne(Utils.extend({
+        where: restriction,
+        include: [
+          {
+            model: models.db.Schedule
+          },
+          {
+            model: models.db.DataSeries,
+            where: restrictionOutput
+          },
+          {
+            model: models.db.CollectorInputOutput
+          },
+          {
+            model: models.db.Filter,
+            required: false,
+            attributes: { include: [[orm.fn('ST_AsEwkt', orm.col('region')), 'region_wkt'], [orm.fn('ST_srid', orm.col('region')), 'srid']] }
+          },
+          {
+            model: models.db.Intersection,
+            required: false
+          }
+        ]
+      }, options)).then(function(collectorResult) {
+        if (collectorResult) {
+          var collectorInstance = new DataModel.Collector(collectorResult.get());
+
+          return self.getDataSeries({id: collectorResult.data_series_output})
+            .then(function(dataSeries) {
+              collectorInstance.dataSeriesOutput = dataSeries;
+              return resolve(collectorInstance);
+            }).catch(function(err) {
+              logger.error("Retrieved null while getting collector", err);
+              return reject(new exceptions.CollectorError("Could not find collector. " + err.toString()));
+            });
+        } else {
+          return resolve(null);
+        }
+      }).catch(function(err) {
+        logger.error(err);
+        return reject(new exceptions.CollectorError("Could not find collector. " + err.toString()));
+      });
+    });
+  },
+
+  /**
    * It retrieves a list of filter in database
    *
    * @param {Object} restriction - A query restriction
@@ -3300,16 +3561,16 @@ var DataManager = module.exports = {
   /**
    * It performs save reprocessing historical data from analysis identifier
    *
-   * @param {number} analysisId - An analysis identifier
+   * @param {number} scheduleId - An schedule identifier
    * @param {Object} historicalObject - A historical object value
    * @param {Object} options - A query options
    * @param {Transaction} options.transaction - An ORM transaction
    * @returns {Promise<Analysis>}
    */
-  addHistoricalData: function(analysisId, historicalObject, options) {
+  addHistoricalData: function(scheduleId, historicalObject, options) {
     return new Promise(function(resolve, reject) {
       // setting analysis_id in historical Data
-      historicalObject.analysis_id = analysisId;
+      historicalObject.schedule_id = scheduleId;
 
       models.db.ReprocessingHistoricalData.create(historicalObject, options)
         .then(function(historicalResult) {
@@ -3435,16 +3696,6 @@ var DataManager = module.exports = {
         // successfully retrieving analysis script language
         .then(function(scriptLanguage) {
           scriptLanguageResult = scriptLanguage;
-          // checking if there is historical data to save
-          if (_.isEmpty(analysisObject.historical) || (!analysisObject.historical.startDate || !analysisObject.historical.endDate)) {
-            return null;
-          }
-          return self.addHistoricalData(analysisResult.id, analysisObject.historical, options);
-        })
-        // successfully saving reprocessing historical result or just skipping it. Remember it may be null.
-        .then(function(historicalResult) {
-          historicalData = historicalResult;
-
           // creating a variable to make visible in closure
           var analysisDataSeriesArray = Utils.clone(analysisObject.analysisDataSeries);
           // making analysis metadata
@@ -3703,11 +3954,11 @@ var DataManager = module.exports = {
       // Update historical data if there is
       .then(function() {
         // reprocessing historical data
-        if (!_.isEmpty(analysisObject.historical)) {
+        if (!_.isEmpty(scheduleObject.historical)) {
           // update
-          if (analysisInstance.historicalData.id) {
+          if (analysisInstance.schedule.historicalData.id) {
             // setting to null when
-            var historicalData = analysisObject.historical;
+            var historicalData = scheduleObject.historical;
             if (historicalData.startDate === "") {
               historicalData.startDate = null;
             }
@@ -3717,14 +3968,14 @@ var DataManager = module.exports = {
 
             if (!historicalData.endDate && !historicalData.startDate) {
               // delete
-              return self.removeHistoricalData({id: analysisInstance.historicalData.id}, options);
+              return self.removeHistoricalData({id: analysisInstance.schedule.historicalData.id}, options);
             }
 
-            return self.updateHistoricalData({id: analysisInstance.historicalData.id}, historicalData, options);
+            return self.updateHistoricalData({id: analysisInstance.schedule.historicalData.id}, historicalData, options);
           } else {
-            if (analysisObject.historical.startDate || analysisObject.historical.endDate) {
+            if (scheduleObject.historical.startDate || scheduleObject.historical.endDate) {
               // save
-              return self.addHistoricalData(analysisInstance.id, analysisObject.historical, options);
+              return self.addHistoricalData(analysisInstance.schedule.id, scheduleObject.historical, options);
             }
           }
         }
@@ -3825,6 +4076,41 @@ var DataManager = module.exports = {
   },
 
   /**
+   * It changes the status of a given analysis
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object} options - An ORM query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   */
+  changeAnalysisStatus: function(restriction, options) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      return self.getAnalysis(restriction, options).then(function(analysisResult) {
+        var dataSet = Utils.find(self.data.dataSets, { id: analysisResult.dataset_output });
+        var dataSeries = Utils.find(self.data.dataSeries, { id: dataSet.data_series_id });
+
+        analysisResult.active = dataSeries.active = !analysisResult.active;
+
+        return models.db.Analysis.update(analysisResult, Utils.extend({
+          fields: ["active"],
+          where: restriction
+        }, options)).then(function() {
+          return models.db.DataSeries.update(dataSeries, Utils.extend({
+            fields: ["active"],
+            where: restriction
+          }, options));
+        }).then(function() {
+          return resolve({ analysis: analysisResult, dataSeries: dataSeries });
+        }).catch(function(err) {
+          return reject(new Error("Could not change analysis status " + err.toString()));
+        });
+      }).catch(function(err) {
+        return reject(new Error("Could not change analysis status " + err.toString()));
+      });
+    })
+  },
+
+  /**
    * It retrieves all analysis data series in database from given restriction
    *
    * @param {Object} restriction - An analysis data series restriction
@@ -3890,14 +4176,18 @@ var DataManager = module.exports = {
             ],
             required: false
           },
-          {
-            model: models.db.ReprocessingHistoricalData,
-            required: false
+          { 
+            model: models.db.Schedule,
+            include: [
+              {
+                model: models.db.ReprocessingHistoricalData,
+                required: false
+              }
+            ]
           },
           models.db.AnalysisMetadata,
           models.db.ScriptLanguage,
           models.db.AnalysisType,
-          models.db.Schedule,
           models.db.AutomaticSchedule
         ],
         where: restriction || {}
@@ -3978,16 +4268,18 @@ var DataManager = module.exports = {
             attributes: {include: [[orm.fn('ST_AsEwkt', orm.col('area_of_interest_box')), 'interest_box']]},
             required: false
           },
-          {
-            model: models.db.ReprocessingHistoricalData,
-            required: false
-          },
           models.db.AnalysisMetadata,
           models.db.ScriptLanguage,
           models.db.AnalysisType,
           {
             model: models.db.Schedule,
-            required: false
+            required: false,
+            include: [
+              {
+                model: models.db.ReprocessingHistoricalData,
+                required: false
+              }
+            ]
           },
           {
             model: models.db.AutomaticSchedule,
@@ -4020,6 +4312,96 @@ var DataManager = module.exports = {
         }).catch(function(err) {
           return reject(err);
         });
+      }).catch(function(err) {
+        logger.error(err);
+        return reject(new exceptions.AnalysisError("Could not retrieve Analysis " + err.message));
+      });
+    });
+  },
+  /**
+   * It retrieve a TerraMA² Analysis instance. If no analysis is found, null is returned.
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object} restriction.dataSet - TerraMA² Output data set restriction
+   * @param {Object} options - A query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   * @param {boolean} ignoreAnalysisDsMetaDataSeries - Flag that indicates if the AnalysisDsMetaDataSeries should be ignored
+   * @return {Promise<DataModel.Analysis>}
+   */
+  getAnalysisAcceptNull: function(restriction, options, ignoreAnalysisDsMetaDataSeries) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      var restrict = Object.assign({}, restriction || {});
+      var dataSetRestriction = {};
+      if (restrict && restrict.dataSet) {
+        dataSetRestriction = restrict.dataSet;
+        delete restrict.dataSet;
+      }
+      var opts = Utils.extend({
+        where: restrict,
+        include: [
+          {
+            model: models.db.AnalysisDataSeries,
+            include: [
+              {
+                model: models.db.AnalysisDataSeriesMetadata,
+                required: false
+              }
+            ]
+          },
+          {
+            model: models.db.AnalysisOutputGrid,
+            attributes: {include: [[orm.fn('ST_AsEwkt', orm.col('area_of_interest_box')), 'interest_box']]},
+            required: false
+          },
+          models.db.AnalysisMetadata,
+          models.db.ScriptLanguage,
+          models.db.AnalysisType,
+          {
+            model: models.db.Schedule,
+            required: false,
+            include: [
+              {
+                model: models.db.ReprocessingHistoricalData,
+                required: false
+              }
+            ]
+          },
+          {
+            model: models.db.AutomaticSchedule,
+            required: false
+          },
+          {
+            model: models.db.DataSet,
+            where: dataSetRestriction
+          }
+        ]
+      }, options);
+
+      return models.db.Analysis.findOne(opts).then(function(analysisResult) {
+        if(analysisResult) {
+          var analysisInstance = new DataModel.Analysis(analysisResult.get());
+
+          return self.getDataSet({id: analysisResult.dataset_output}).then(function(analysisOutputDataSet) {
+            return self.getDataSeries({id: analysisOutputDataSet.data_series_id}).then(function(analysisOutputDataSeries) {
+              analysisInstance.setDataSeries(analysisOutputDataSeries);
+              analysisResult.AnalysisDataSeries.forEach(function(analysisDataSeries) {
+                var ds = Utils.find(self.data.dataSeries, {id: analysisDataSeries.data_series_id});
+                var analysisDsMeta = new DataModel.AnalysisDataSeries(analysisDataSeries.get());
+                if(ignoreAnalysisDsMetaDataSeries == undefined || ignoreAnalysisDsMetaDataSeries == null || !ignoreAnalysisDsMetaDataSeries) analysisDsMeta.setDataSeries(ds);
+                analysisInstance.addAnalysisDataSeries(analysisDsMeta);
+              });
+
+              return resolve(analysisInstance);
+            }).catch(function(err) {
+              return reject(err);
+            });
+          }).catch(function(err) {
+            return reject(err);
+          });
+        } else {
+          return resolve(null);
+        }
       }).catch(function(err) {
         logger.error(err);
         return reject(new exceptions.AnalysisError("Could not retrieve Analysis " + err.message));
@@ -4847,6 +5229,33 @@ var DataManager = module.exports = {
   },
 
   /**
+   * It changes the status of a given alert
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object} options - An ORM query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   */
+  changeAlertStatus: function(restriction, options) {
+    var self = this;
+    return new Promise(function(resolve, reject){
+      return self.getAlert(restriction, options).then(function(alertResult) {
+        alertResult.active = !alertResult.active;
+
+        return models.db.Alert.update(alertResult, Utils.extend({
+          fields: ["active"],
+          where: restriction
+        }, options)).then(function() {
+          return resolve(alertResult);
+        }).catch(function(err) {
+          return reject(new Error("Could not change alert status " + err.toString()));
+        });
+      }).catch(function(err) {
+        return reject(new Error("Could not change alert status " + err.toString()));
+      });
+    })
+  },
+
+  /**
    * It performs update report metadata from given restriction
    *
    * @param {Object} restriction - A query restriction
@@ -5108,6 +5517,10 @@ var DataManager = module.exports = {
                 model: models.db.ViewStyleLegendMetadata
               }
             ]
+          },
+          {
+            model: models.db.ViewProperties,
+            require: false
           }
         ],
         where: restriction
@@ -5125,6 +5538,9 @@ var DataManager = module.exports = {
                 view.ViewStyleLegend.get(), {colors: view.ViewStyleLegend.ViewStyleColors ? view.ViewStyleLegend.ViewStyleColors.map(function(elm) { return elm.get(); }) : []}));
               legendModel.setMetadata(Utils.formatMetadataFromDB(view.ViewStyleLegend.ViewStyleLegendMetadata));
               viewModel.setLegend(legendModel);
+            }
+            if (view.ViewProperties){
+              viewModel.setProperties(view.ViewProperties);
             }
             return viewModel;
           }));
@@ -5412,7 +5828,35 @@ var DataManager = module.exports = {
             objectToAssign.schedule = {};
             objectToAssign.automatic_schedule = schedule || {};
           }
-          return resolve(new DataModel.View(Object.assign(view.get(), objectToAssign)));
+          return new DataModel.View(Object.assign(view.get(), objectToAssign));
+        })
+        .then(function(viewModel){
+          if (viewObject.properties){
+            var properties = viewObject.properties;
+            var propertiesList = [];
+
+            if (properties instanceof Array) {
+              propertiesList = properties;
+            } else if (properties instanceof Object) {
+              for(var key in properties) {
+                if (properties.hasOwnProperty(key)) {
+                  propertiesList.push({
+                    view_id: view.id,
+                    key: key,
+                    value: properties[key]
+                  });
+                }
+              }
+            }
+            return models.db.ViewProperties.bulkCreate(propertiesList, Utils.extend({view_id: view.id}, options)).then(function () {
+              return models.db.ViewProperties.findAll(Utils.extend({where: {view_id: view.id}}, options)).then(function(viewProperties) {
+                viewModel.setProperties(viewProperties);
+                return resolve(viewModel);
+              });
+            });
+          } else {
+            return resolve(viewModel)
+          }
         })
 
         .catch(function(err) {
@@ -5449,6 +5893,33 @@ var DataManager = module.exports = {
           return reject(new Error("Could not update view " + err.toString()));
         });
     });
+  },
+
+  /**
+   * It changes the status of a given view
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object} options - An ORM query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   */
+  changeViewStatus: function(restriction, options) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      return self.getView(restriction, options).then(function(viewResult) {
+        viewResult.active = !viewResult.active;
+
+        return models.db.View.update(viewResult, Utils.extend({
+          fields: ["active"],
+          where: restriction
+        }, options)).then(function() {
+          return resolve(viewResult);
+        }).catch(function(err) {
+          return reject(new Error("Could not change view status " + err.toString()));
+        });
+      }).catch(function(err) {
+        return reject(new Error("Could not change view status " + err.toString()));
+      });
+    })
   },
 
   /**
@@ -5793,6 +6264,79 @@ var DataManager = module.exports = {
         .catch(function(err) {
           return reject(err);
         });
+    });
+  },
+
+  /**
+   * It retrieves all versions from given restriction
+   *
+   * @param {Object} restriction - A query restriction
+   * @param {Object?} options - An ORM query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   * @return {Promise<any[]>}
+   */
+  listVersions: function(restriction, options) {
+    return new Promise(function(resolve, reject) {
+      return models.db.Version.findAll(Utils.extend({ where: restriction }, options))
+        .then(function(versions) {
+          return resolve(versions.map(function(version) {
+            return version.get();
+          }));
+        })
+        .catch(function(err) {
+          return reject(new Error(Utils.format("Could not list versions %s", err.toString())));
+        });
+    });
+  },
+
+  /**
+   * Adds a version.
+   * @param {Object} version - A javascript object with version values
+   * @param {Object} options - A query options
+   * @param {Transaction} options.transaction - An ORM transaction
+   * @return {Promise} a bluebird promise
+   */
+  addVersion: function(version, options) {
+    return new Promise(function(resolve, reject) {
+      return models.db.Version.create(version, options).then(function(newVersion) {
+        return resolve(newVersion.get());
+      }).catch(function(err) {
+        return reject(new Error(Utils.format("Could not save version due %s", err.toString())));
+      });
+    });
+  },
+
+  isSRIDValid: function(srid) {
+    return new Promise(function(resolve, reject) {
+      if(!isNaN(srid) && parseInt(Number(srid)) == srid && !isNaN(parseInt(srid, 10))) {
+        models.db.sequelize.query("select count(*) as number_of_items from public.spatial_ref_sys where srid=" + srid).then(function(sridResult) {
+          if(sridResult[0][0].number_of_items > 0) {
+            resolve();
+          } else {
+            reject("Invalid SRID!");
+          }
+        }).catch(function(err) {
+          reject(err);
+        });
+      } else {
+        reject("Invalid SRID!");
+      }
+    });
+  },
+
+  getSRIDs: function() {
+    return new Promise(function(resolve, reject) {
+      models.db.sequelize.query("select srid from public.spatial_ref_sys").then(function(srids) {
+        var sridsArray = [];
+
+        srids[0].forEach(function(srid) {
+          sridsArray.push(srid.srid);
+        });
+
+        resolve(sridsArray);
+      }).catch(function(err) {
+        reject(err);
+      });
     });
   }
 };

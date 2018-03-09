@@ -197,6 +197,25 @@
     });
   };
   /**
+   * It changes the status of a given Data Provider
+   * 
+   * @param {number} dataProviderId - Data Provider Identifier
+   * @returns {Promise<DataProvider>}
+   */
+  DataProvider.changeStatus = function(dataProviderId) {
+    return new PromiseClass(function(resolve, reject) {
+      return DataManager.changeDataProviderStatus({ id: parseInt(dataProviderId) }).then(function(dataProvider) {
+        return TcpService.send({
+          "DataProviders": [dataProvider.toService()]
+        });
+      }).then(function() {
+        resolve();
+      }).catch(function(err) {
+        reject(err);
+      });
+    });
+  };
+  /**
    * It performs remove data provider from database from data provider identifier
    * 
    * @param {number} dataProviderId - Data provider Identifier
@@ -208,30 +227,24 @@
     return new PromiseClass(function(resolve, reject){
       return DataManager.getDataProvider({id: dataProviderId}).then(function(dProvider) {
         return DataManager.listDataSeries({data_provider_id: dataProviderId}).then(function(dataSeriesOfProvider){
-          var filterPromises = [];
-          dataSeriesOfProvider.forEach(function(dataSeries){
-            filterPromises.push(DataManager.listFilters({data_series_id: dataSeries.id}));
-          });
-          return PromiseClass.all(filterPromises).then(function(filters){
-            var usedByFilter = false;
-            filters.forEach(function(filter){
-              if (filter.length > 0){
-                usedByFilter = true;
-              }
-            });
-            if (usedByFilter)
-              throw new Error("Cannot remove this data provider. It is used by a data series that is used in a filter.");
 
-            return DataManager.removeDataProvider({id: dataProviderId}).then(function(result) {
-              var dataSeries = result.dataSeries;
-              var dataProvider = result.dataProvider;
-              TcpService.remove({
-                "DataProvider": [dProvider.id],
-                "DataSeries": dataSeries.map(function(dSeries) { return dSeries.id; })
-              });
-              return resolve(dProvider);
+          if(dataSeriesOfProvider.length > 0){
+            var dataSeriesNames = [];
+            dataSeriesOfProvider.forEach(function(dataSeries){
+              dataSeriesNames.push(dataSeries.name);
             });
-          })
+            throw new Error(dataSeriesNames.join(", "));
+          }
+
+          return DataManager.removeDataProvider({id: dataProviderId}).then(function(result) {
+            var dataSeries = result.dataSeries;
+            var dataProvider = result.dataProvider;
+            TcpService.remove({
+              "DataProvider": [dProvider.id],
+              "DataSeries": dataSeries.map(function(dSeries) { return dSeries.id; })
+            });
+            return resolve(dProvider);
+          });
         })
       }).catch(function(err) {
         return reject(err);

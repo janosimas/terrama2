@@ -70,7 +70,7 @@
 {% block content %}
 
 <div ng-controller="ViewRegisterUpdateController as ctrl">
-  <terrama2-box title="i18n.__(ctrl.isUpdating ? 'View Update' : 'View Registration')">
+  <terrama2-box title="i18n.__(ctrl.isUpdating ? 'View Update' : 'View Registration')" helper="'{[ BASE_URL ]}helper/add_views.html'">
     <div class="col-md-12">
       <terrama2-alert-box2 handler="ctrl.MessageBoxService.alertBox" close="ctrl.close()"></terrama2-alert-box2>
     </div>
@@ -193,17 +193,15 @@
     </terrama2-box>
 
     <terrama2-box title="i18n.__('Schedule')" css="ctrl.css" ng-show="ctrl.isDynamic && ctrl.isValid">
-      <div class="col-md-12">
+      <div class="col-md-12 terrama2-nopadding-box">
         <terrama2-schedule model="ctrl.view.schedule" options="ctrl.scheduleOptions"></terrama2-schedule>
       </div>
     </terrama2-box>
 
-    <terrama2-box title="i18n.__('Style')" css="ctrl.css"
-                  handle-buttons="ctrl.styleButtons"
-                  extra="{disabled: !ctrl.hasStyle}">
-      <form name="forms.styleForm" novalidate ng-show="ctrl.hasStyle">
+    <terrama2-box title="i18n.__('Style')" css="ctrl.css">
+      <form name="forms.styleForm" novalidate>
         <!-- Vectorial -->
-        <terrama2-style-legend form-ctrl="forms.styleForm" type="ctrl.targetDataSeriesType" columns-list="ctrl.columnsList" postgis-data="ctrl.postgisData" model="ctrl.legend"></terrama2-style-legend>
+        <terrama2-style-legend form-ctrl="forms.styleForm" type="ctrl.targetDataSeriesType" is-dynamic="ctrl.isDynamic" is-updating="ctrl.isUpdating" columns-list="ctrl.columnsList" postgis-data="ctrl.postgisData" model="ctrl.legend"></terrama2-style-legend>
       </form>
     </terrama2-box>
 

@@ -33,12 +33,16 @@
 #include "SemanticsManager.hpp"
 #include "Raii.hpp"
 #include "Logger.hpp"
+#include "../data-model/DataManager.hpp"
+#include "../data-model/DataSeries.hpp"
+#include "../data-model/DataProvider.hpp"
 #include "../Exception.hpp"
 #include "../../Config.hpp"
 
 // TerraLib
 #include <terralib/dataaccess/datasource/ScopedTransaction.h>
 #include <terralib/dataaccess/datasource/DataSourceTransactor.h>
+#include <terralib/dataaccess/datasource/DataSourceFactory.h>
 #include <terralib/core/utils/Platform.h>
 #include <terralib/common/PlatformUtils.h>
 #include <terralib/common/UnitsOfMeasureManager.h>
@@ -161,25 +165,25 @@ void terrama2::core::initializeTerralib()
 
   // Base of Time measure: second
   te::common::UnitOfMeasurePtr uomSecond(new te::common::UnitOfMeasure(te::common::UOM_second,"SECOND", "s", te::common::MeasureType::Time));
-  std::vector<std::string> secondAlternativeNames {"s", "sec", "ss", "seconds"};
+  std::vector<std::string> secondAlternativeNames {"s", "sec", "second", "seconds"};
 
   te::common::UnitsOfMeasureManager::getInstance().insert(uomSecond, secondAlternativeNames);
 
   // minute
   te::common::UnitOfMeasurePtr uomMinute(new te::common::UnitOfMeasure(1, "MINUTE", "min", te::common::MeasureType::Time, te::common::UOM_second, 60.0, 0.0, 0.0, 1.0));
-  std::vector<std::string> minuteAlternativeNames {"min", "minutes"};
+  std::vector<std::string> minuteAlternativeNames {"min", "minute", "minutes"};
 
   // hour
   te::common::UnitOfMeasurePtr uomHour(new te::common::UnitOfMeasure(2, "HOUR", "h", te::common::MeasureType::Time, te::common::UOM_second, 3600.0, 0.0, 0.0, 1.0));
-  std::vector<std::string> hourAlternativeNames {"hh", "h", "hours"};
+  std::vector<std::string> hourAlternativeNames {"h", "hour", "hours"};
 
   // day
   te::common::UnitOfMeasurePtr uomDay(new te::common::UnitOfMeasure(3, "DAY", "d", te::common::MeasureType::Time, te::common::UOM_second, 86400.0, 0.0, 0.0, 1.0));
-  std::vector<std::string> dayAlternativeNames {"d", "dd", "days"};
+  std::vector<std::string> dayAlternativeNames {"d", "day", "days"};
 
   // week
   te::common::UnitOfMeasurePtr uomWeek(new te::common::UnitOfMeasure(4, "WEEK", "w", te::common::MeasureType::Time, te::common::UOM_second, 604800.0, 0.0, 0.0, 1.0));
-  std::vector<std::string> weekAlternativeNames {"w", "wk", "weeks"};
+  std::vector<std::string> weekAlternativeNames {"w", "wk", "week", "weeks"};
 
   te::common::UnitsOfMeasureManager::getInstance().insert(uomMinute, minuteAlternativeNames);
   te::common::UnitsOfMeasureManager::getInstance().insert(uomHour, hourAlternativeNames);
@@ -195,10 +199,10 @@ void terrama2::core::initializeTerralib()
 
   // kilometer
   te::common::UnitOfMeasurePtr uomKm(new te::common::UnitOfMeasure(5, "KILOMETER", "km", te::common::MeasureType::Length, te::common::UOM_Metre, 1000.0, 0.0, 0.0, 1.0));
-  std::vector<std::string> kmAlternativeNames {"km", "kilometers"};
+  std::vector<std::string> kmAlternativeNames {"km", "kilometer", "kilometers"};
   // centimeter
   te::common::UnitOfMeasurePtr uomCm(new te::common::UnitOfMeasure(6, "CENTIMETER", "cm", te::common::MeasureType::Length, te::common::UOM_Metre, 0.01, 0.0, 0.0, 1.0));
-  std::vector<std::string> cmAlternativeNames {"cm", "centimeters"};
+  std::vector<std::string> cmAlternativeNames {"cm", "centimeter", "centimeters"};
 
 
   te::common::UnitsOfMeasureManager::getInstance().insert(uomKm, kmAlternativeNames);
@@ -434,19 +438,19 @@ std::vector<std::string> terrama2::core::splitString(const std::string& text, ch
   return splittedString;
 }
 
-std::vector<std::shared_ptr<te::dt::DateTime> > terrama2::core::getAllDates(te::da::DataSet* teDataset,
-                                                                            const std::string& datetimeColumnName)
+std::vector<std::shared_ptr<te::dt::TimeInstantTZ> > terrama2::core::getAllDates(te::da::DataSet* teDataset,
+                                                                                 const std::string& datetimeColumnName)
 {
-  std::vector<std::shared_ptr<te::dt::DateTime> > vecDates;
+  std::vector<std::shared_ptr<te::dt::TimeInstantTZ> > vecDates;
 
   teDataset->moveBeforeFirst();
   while(teDataset->moveNext())
   {
     // Retrieve all execution dates of dataset
-    std::shared_ptr<te::dt::DateTime> executionDate = teDataset->getDateTime(datetimeColumnName);
+    std::shared_ptr<te::dt::TimeInstantTZ> executionDate(static_cast<te::dt::TimeInstantTZ*>(teDataset->getDateTime(datetimeColumnName).release()));
 
     auto it = std::lower_bound(vecDates.begin(), vecDates.end(), executionDate,
-                               [&](std::shared_ptr<te::dt::DateTime> const& first, std::shared_ptr<te::dt::DateTime> const& second)
+                               [&](std::shared_ptr<te::dt::TimeInstantTZ> const& first, std::shared_ptr<te::dt::TimeInstantTZ> const& second)
     {
               return *first < *second;
   });
@@ -553,4 +557,63 @@ terrama2::core::getDCPPositionsTable(std::shared_ptr<te::da::DataSource> datasou
   std::shared_ptr<te::da::DataSetType> teDataSetType = transactorDestination->getDataSetType(dataSetName);
 
   return {teDataSetType, teDataset};
+}
+
+void terrama2::core::erasePreviousResult(DataManagerPtr dataManager, DataSeriesId dataSeriesId, std::shared_ptr<te::dt::TimeInstantTZ> startTime)
+{
+  auto outputDataSeries = dataManager->findDataSeries(dataSeriesId);
+  if(!outputDataSeries)
+  {
+    TERRAMA2_LOG_ERROR() << QObject::tr("Invalid output data series for analysis.");
+    return;
+  }
+  auto outputDataProvider = dataManager->findDataProvider(outputDataSeries->dataProviderId);
+  if(!outputDataProvider)
+  {
+    TERRAMA2_LOG_ERROR() << QObject::tr("Invalid output data provider for analysis.");
+    return;
+  }
+
+  if(outputDataProvider->dataProviderType == "POSTGIS")
+  {
+    auto dataset = outputDataSeries->datasetList[0];
+    std::string tableName;
+
+    try
+    {
+      tableName = dataset->format.at("table_name");
+    }
+    catch(...)
+    {
+      QString errMsg = QObject::tr("Undefined table name in dataset: %1.").arg(dataset->id);
+      TERRAMA2_LOG_ERROR() << errMsg;
+      throw terrama2::core::UndefinedTagException() << ErrorDescription(errMsg);
+    }
+
+    std::shared_ptr<te::da::DataSource> datasource(te::da::DataSourceFactory::make("POSTGIS", outputDataProvider->uri));
+
+    // RAII for open/closing the datasource
+    terrama2::core::OpenClose<std::shared_ptr<te::da::DataSource> > openClose(datasource);
+
+    if(!datasource->isOpened())
+    {
+      QString errMsg = QObject::tr("DataProvider could not be opened.");
+      TERRAMA2_LOG_ERROR() << errMsg;
+      throw Exception() << ErrorDescription(errMsg);
+    }
+
+    // get a transactor to interact to the data source
+    std::shared_ptr<te::da::DataSourceTransactor> transactor(datasource->getTransactor());
+
+    auto dataSetNames = transactor->getDataSetNames();
+
+    if(std::find(dataSetNames.cbegin(), dataSetNames.cend(), tableName) != dataSetNames.cend() ||
+       std::find(dataSetNames.cbegin(), dataSetNames.cend(), "public."+tableName) != dataSetNames.cend())
+      transactor->execute("delete from " + tableName + " where execution_date = '" + startTime->toString() + "'");
+  }
+  else
+  {
+    QString errMsg = QObject::tr("Removing old results not implement for this dataseries format.");
+    TERRAMA2_LOG_ERROR() << errMsg;
+  }
 }

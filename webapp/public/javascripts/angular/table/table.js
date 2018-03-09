@@ -28,6 +28,8 @@ define([
           fields: '=fields',
           model: '=model',
           link: '&',
+          statusChangeLink: '&',
+          servicesInstances: '=servicesInstances',
           icon: '&',
           orderElementby: '=?orderBy',
           iconProperties: '=?iconProperties',
@@ -81,6 +83,7 @@ define([
           $scope.identityFields = [];
 
           var cacheLinks = {};
+          var cacheLinksStatusChange = {};
 
           $scope.extra = $scope.extra ? $scope.extra : {};
 
@@ -143,6 +146,11 @@ define([
             $scope.serviceStartTime = object.start_time;
             $scope.serviceVersion = object.version;
             $scope.maps_server_connection = object.maps_server_connection;
+
+            if(object.different_versions) {
+              $scope.serviceVersionMessage = i18n.__("It seems you are using different versions of TerraMA². Current version of TerraMA² Web is ") + object.web_version + i18n.__(" but the TerraMA² service version is ") + object.version + i18n.__(". Some operations may not work properly");
+            }
+
             if(!object.logger_online)
               $scope.showServiceLoggerOffline = true;
             else 
@@ -206,6 +214,15 @@ define([
             return link;
           }
 
+          $scope.makeLinkStatusChange = function(element) {
+            var link = cacheLinksStatusChange[element.id];
+            if (!link) {
+              link = $scope.statusChangeLink()(element);
+              cacheLinksStatusChange[element.id] = link;
+            }
+            return link;
+          }
+
           $scope.processField = function(key, obj) {
             if (key.indexOf('.') > 0) {
               var arr = key.split(".");
@@ -218,6 +235,22 @@ define([
             } else {
               return obj[key];
             }
+          }
+
+          $scope.changeStatus = function(event, elementStatusChangeLink) {
+            var element = angular.element(event.target);
+
+            $http({
+              method: 'GET',
+              url: elementStatusChangeLink
+            }).then(function(response) {
+              if(element.hasClass('fa-toggle-on'))
+                element.removeClass('fa-toggle-on').addClass("fa-toggle-off");
+              else
+                element.removeClass('fa-toggle-off').addClass("fa-toggle-on");
+            }).catch(function(response) {
+              console.log(response.err);
+            });
           }
 
           $scope.$watch('fields', function(fields) {
@@ -351,7 +384,7 @@ define([
       };
     }])
 
-    .directive('terrama2TableHeader', ["i18n", function(i18n) {
+    .directive('terrama2TableHeader', ["i18n", "$timeout", function(i18n, $timeout) {
       return {
         restrict: 'E',
         transclude: {
@@ -361,6 +394,47 @@ define([
         templateUrl: BASE_URL + "javascripts/angular/table/templates/tableFilter.html",
         link: function(scope, element, attrs, transclude) {
           scope.linkToAdd = attrs.linkToAdd;
+          scope.showAdvancedFilter = false;
+          
+          var getJsonValue = function(json, curIdx, indexes) {
+            if(curIdx === (indexes.length - 1))
+              return json[indexes[curIdx]];
+            else
+              return getJsonValue(json[indexes[curIdx]], curIdx + 1, indexes);
+          }
+
+          scope.showHideAdvancedFilter = function() {
+            if(scope.showAdvancedFilter)
+              scope.showAdvancedFilter = false;
+            else
+              scope.showAdvancedFilter = true;
+          }
+          
+          $timeout(function() {
+            for(var j = 0, modelLength = scope.model.length; j < modelLength; j++) {
+              scope.model[j].showInTable = true;
+            }
+
+            if(scope.extra.executeAdvancedFilter !== undefined)
+              scope.executeAdvancedFilter = scope.extra.executeAdvancedFilter;
+            else
+              scope.executeAdvancedFilter = function() {
+                var indexes = scope.extra.advancedFilterField.split('.');
+
+                for(var i = 0, advancedFiltersLength = scope.extra.advancedFilters.length; i < advancedFiltersLength; i++) {
+                  for(var j = 0, modelLength = scope.model.length; j < modelLength; j++) {
+                    var jsonValue = getJsonValue(scope.model[j], 0, indexes);
+
+                    if((isNaN(scope.extra.advancedFilters[i].value) ? scope.extra.advancedFilters[i].value : scope.extra.advancedFilters[i].value) === jsonValue) {
+                      if(scope.extra.advancedFilters[i].checked)
+                        scope.model[j].showInTable = true;
+                      else
+                        scope.model[j].showInTable = false;
+                    }
+                  }
+                }
+              };
+          }, 500);
         }
       };
     }])

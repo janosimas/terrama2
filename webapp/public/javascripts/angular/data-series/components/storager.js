@@ -14,10 +14,12 @@ define([], function(){
             prepareFormatToForm: "<",
             fieldHasError: "<",
             saveStoragerData: "<",
+            validateSrid: "<",
             forms: "<",
             onStoragerFormatChange: "<",
             model: "<",
             options: "=",
+            isChecking: "=",
             schedule: "<"
         },
         templateUrl: BASE_URL + "dist/templates/data-series/templates/storager.html",
@@ -231,7 +233,7 @@ define([], function(){
               property = dcpItem.newAlias;
             }
 
-            if(self.dcpsStoragerObject[property].alias === dcpItem.alias) {
+            if(self.dcpsStoragerObject[property].alias == dcpItem.alias) {
               for(var dcpsStoragerKey in self.dcpsStoragerObject[dcpItem.alias]) {
                 if(dcpItem.hasOwnProperty(dcpsStoragerKey) && dcpsStoragerKey.substring(0, 10) != 'table_name' && dcpsStoragerKey.substr(dcpsStoragerKey.length - 5) != '_html') {
                   self.dcpsStoragerObject[dcpItem.alias][dcpsStoragerKey] = dcpItem[dcpsStoragerKey];
@@ -396,33 +398,50 @@ define([], function(){
         $scope.$broadcast('schemaFormValidate');
 
         if (self.forms.storagerForm.$valid && self.forms.storagerDataForm.$valid) {
-          // checking if it is a dcp
-          switch (self.formatSelected.data_series_type_name) {
-            case "DCP":
-              $scope.$emit("storageValuesReceive", {
-                data: self.objectToArray(self.dcpsStoragerObject),
-                data_provider: self['storager_data_provider_id'],
-                editedDcps: self.editedStoragerDcps,
-                removedDcps: self.removedStoragerDcps,
-                service: self["storager_service"],
-                type: self.formatSelected.data_series_type_name,
-                semantics: self.formatSelected
-              });
-              break;
-            case "GRID":
-            case "OCCURRENCE":
-            case "GEOMETRIC_OBJECT":
-              $scope.$emit("storageValuesReceive", {
-                data: self.modelStorager,
-                data_provider: self['storager_data_provider_id'],
-                service: self["storager_service"],
-                type: self.formatSelected.data_series_type_name,
-                semantics: self.formatSelected
-              });
-              break;
-            default:
-              $scope.$emit("storageValuesReceive", {data: null, type: null});
-              break;
+          var storageValuesReceive = function() {
+            self.isChecking.value = true;
+
+            // checking if it is a dcp
+            switch (self.formatSelected.data_series_type_name) {
+              case "DCP":
+                $scope.$emit("storageValuesReceive", {
+                  data: self.objectToArray(self.dcpsStoragerObject),
+                  data_provider: self['storager_data_provider_id'],
+                  editedDcps: self.editedStoragerDcps,
+                  removedDcps: self.removedStoragerDcps,
+                  service: self["storager_service"],
+                  type: self.formatSelected.data_series_type_name,
+                  semantics: self.formatSelected
+                });
+                break;
+              case "GRID":
+              case "OCCURRENCE":
+              case "GEOMETRIC_OBJECT":
+                $scope.$emit("storageValuesReceive", {
+                  data: self.modelStorager,
+                  data_provider: self['storager_data_provider_id'],
+                  service: self["storager_service"],
+                  type: self.formatSelected.data_series_type_name,
+                  semantics: self.formatSelected
+                });
+                break;
+              default:
+                $scope.$emit("storageValuesReceive", {data: null, type: null});
+                break;
+            }
+          };
+
+          if(self.modelStorager.projection || self.modelStorager.srid) {
+            var srid = (self.modelStorager.projection ? self.modelStorager.projection : self.modelStorager.srid);
+            var sridValidationResult = self.validateSrid(srid);
+
+            if(sridValidationResult) {
+              $scope.$emit("storageValuesReceive", { error: sridValidationResult });
+            } else {
+              storageValuesReceive();
+            }
+          } else {
+            storageValuesReceive();
           }
         } else {
           angular.forEach(self.forms.storagerDataForm.$error, function (field) {

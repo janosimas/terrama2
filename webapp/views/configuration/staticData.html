@@ -20,6 +20,9 @@
    link: function(object) {
      return baseUrl + object.id + "?type=static#/wizard";
    },
+   statusChangeLink: function(object) {
+     return "{[ BASE_URL ]}api/DataSeries/static/changeStatus/" + object.id;
+   },
    iconFn: function(object) {
      if (object.data_series_semantics.data_series_type_name === globals.enums.DataSeriesType.GRID) {
        return "{[ BASE_URL ]}images/static-data-series/grid/grid.png";
@@ -44,14 +47,14 @@
 {% block content %}
 
 <div ng-controller="DataSeriesListController">
-  <terrama2-box title="i18n.__('Static Data')">
+  <terrama2-box title="i18n.__('Static Data')" helper="'{[ BASE_URL ]}helper/static_data.html'">
     <div class="row">
       <div class="col-md-12">
         <div class="col-md-12">
           <terrama2-alert-box2 handler="MessageBoxService.alertBox" close="close()"></terrama2-alert-box2>
         </div>
 
-        <terrama2-table fields="fields" model="model" icon="iconFn" link="link" 
+        <terrama2-table fields="fields" model="model" icon="iconFn" link="link" status-change-link="statusChangeLink" 
                        icon-properties="iconProperties" link-to-add="linkToAdd"
                        remove="remove(object)" extra="extra" order-by="orderBydata">
         </terrama2-table>

@@ -33,6 +33,9 @@ define(function() {
         $scope.link = function(object) {
           return BASE_URL + "configuration/providers/edit/" + object.id;
         };
+        $scope.statusChangeLink = function(object) {
+          return BASE_URL + "api/DataProvider/changeStatus/" + object.id;
+        };
         $scope.close = function() {
           MessageBoxService.reset();
         };
@@ -66,10 +69,11 @@ define(function() {
           advancedFilterField: "data_provider_type.name",
           removeOperationCallback: function(err, data) {
             if(err) {
-              MessageBoxService.danger(i18n.__(title), err.message);
+              var errMessage = i18n.__("Can not remove this data provider. It is used in the following data series");
+              MessageBoxService.danger(i18n.__(title), errMessage + ": " + err.message);
               return;
             }
-            MessageBoxService.danger(i18n.__(title), data.name + i18n.__(" removed"));
+            MessageBoxService.success(i18n.__(title), data.result.name + i18n.__(" removed"));
           }
         };
 

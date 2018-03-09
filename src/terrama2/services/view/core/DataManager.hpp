@@ -30,6 +30,8 @@
 #ifndef __TERRAMA2_SERVICES_VIEW_CORE_DATAMANAGER_HPP__
 #define __TERRAMA2_SERVICES_VIEW_CORE_DATAMANAGER_HPP__
 
+// TerraMa2
+#include "Config.hpp"
 #include "../../../core/data-model/DataManager.hpp"
 #include "Typedef.hpp"
 #include "Shared.hpp"
@@ -42,7 +44,7 @@ namespace terrama2
     {
       namespace core
       {
-        class DataManager : public terrama2::core::DataManager
+        class TMVIEWEXPORT DataManager : public terrama2::core::DataManager
         {
           Q_OBJECT
 
@@ -149,7 +151,8 @@ namespace terrama2
           //! Signal to notify that a View has been updated.
           void viewUpdated(ViewPtr);
           //! Signal to notify that a View has been removed.
-          void viewRemoved(ViewId, DataSeriesId);
+          // note: view has a different behaviour and remove, we need the complete object
+          void viewRemoved(ViewPtr, DataSeriesId);
 
         protected:
           std::map<ViewId, ViewPtr> view_;//!< A view from ViewId to View.

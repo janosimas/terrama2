@@ -30,6 +30,9 @@
 #ifndef __TERRAMA2_CORE_VERSION_HPP__
 #define __TERRAMA2_CORE_VERSION_HPP__
 
+// TerraMa2
+#include "../Config.hpp"
+
 // STL
 #include <string>
 
@@ -38,7 +41,7 @@ namespace terrama2
   namespace core
   {
     //! Utility class for system versioning.
-    class Version
+    class TMCOREEXPORT Version
     {
       public:
 
@@ -50,9 +53,6 @@ namespace terrama2
 
         //! Return the patch revision number of TerraMA2.
         static int patchNumber();
-
-        //! Tells which type of release.
-        static std::string releaseStatus();
 
         //! Tells the build date.
         static std::string buildDate();
@@ -76,4 +76,3 @@ namespace terrama2
 }   // end namespace terrama2
 
 #endif  // __TERRAMA2_CORE_VERSION_HPP__
-

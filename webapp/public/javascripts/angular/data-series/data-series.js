@@ -50,7 +50,9 @@ define([], function() {
       BaseService
         .$request(BASE_URL + "api/DataSeries", "GET", {params: {project_id: projectId, type: 'dynamic', ignoreAnalysisOutputDataSeries: true, collector: true}})
         .then(function(response) {
-          $scope.extra.dataSeries = response.data;
+          $scope.extra.dataSeries = response.data.filter(function(dSeries){
+            return dSeries.data_series_semantics.type !== "DCP";
+          });
           return defer.resolve(response.data);
         })
         .catch(function(err) {
@@ -76,6 +78,8 @@ define([], function() {
     };
 
     var config = $window.configuration;
+
+    $scope.servicesInstances = config.servicesInstances || null;
 
     var findCollectorOrAnalysis = function(dataSeries){
       if (config.dataSeriesType != 'static'){
@@ -111,7 +115,10 @@ define([], function() {
           targetMethod = MessageBoxService.danger;
         }
       }
-      targetMethod.call(MessageBoxService, i18n.__(title), errorMessage);
+
+      if(targetMethod && targetMethod.call)
+        targetMethod.call(MessageBoxService, i18n.__(title), errorMessage);
+
       delete serviceCache[response.service];
     });
 
@@ -128,11 +135,20 @@ define([], function() {
     Socket.on('statusResponse', function(response) {
       if(response.checking === undefined || (!response.checking && response.status == 400)) {
         if(response.online) {
-          Socket.emit('run', serviceCache[response.service].process_ids);
-          delete $scope.disabledButtons[serviceCache[response.service].service_id];
-          delete serviceCache[response.service];
+          if(serviceCache[response.service]) {
+            Socket.emit('run', serviceCache[response.service].process_ids);
+            delete $scope.disabledButtons[serviceCache[response.service].service_id];
+            delete serviceCache[response.service];
+          }
+
+          if($scope.servicesInstances)
+            $scope.servicesInstances[response.service] = true;
         } else {
-          delete $scope.disabledButtons[serviceCache[response.service].service_id];
+          if(serviceCache[response.service])
+            delete $scope.disabledButtons[serviceCache[response.service].service_id];
+
+          if($scope.servicesInstances)
+            $scope.servicesInstances[response.service] = false;
         }
       }
     });
@@ -344,6 +360,11 @@ define([], function() {
           instance.model_type = value;
           var service_instance = findCollectorOrAnalysis(instance);
           instance.service_instance_id = service_instance ? service_instance.service_instance_id : undefined;
+
+          if($scope.servicesInstances) {
+            Socket.emit("status", { service: instance.service_instance_id });
+            $scope.servicesInstances[instance.service_instance_id] = false;
+          }
         });
       }, 500);
 
@@ -363,6 +384,8 @@ define([], function() {
     });
 
     $scope.link = config.link || null;
+
+    $scope.statusChangeLink = config.statusChangeLink || null;
 
     $scope.linkToAdd = config.linkToAdd || null;
 
