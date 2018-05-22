@@ -206,7 +206,7 @@ void terrama2::core::Service::processingTaskThread(const std::shared_ptr< const 
   {
     while(true)
     {
-      std::packaged_task<void()> task;
+      std::function<void()> task;
 
       {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -232,7 +232,7 @@ void terrama2::core::Service::processingTaskThread(const std::shared_ptr< const 
       if(stop_)
         break;
 
-      if(task.valid())
+      if(task)
         task();
 
       if(stop_)
