@@ -107,6 +107,10 @@ IF(TERRAMA2_INTERPOLATOR_ENABLED)
   target_link_libraries(terrama2_service terrama2_interpolator_core)
 ENDIF()
 
+IF(TERRAMA2_ARCHIVER_ENABLED)
+  target_link_libraries(terrama2_service terrama2_archiver_core)
+ENDIF()
+
 if(WIN32 AND MSVC)
   set_target_properties(terraview PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE")
   set_target_properties(terraview PROPERTIES RELWITHDEBINFO "/SUBSYSTEM:CONSOLE")

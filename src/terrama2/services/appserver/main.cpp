@@ -60,6 +60,12 @@
 #include <terrama2/services/interpolator/core/InterpolatorLogger.hpp>
 #endif
 
+#ifdef TERRAMA2_ARCHIVER_ENABLED
+#include <terrama2/services/archiver/core/Service.hpp>
+// #include <terrama2/services/archiver/core/DataManager.hpp>
+// #include <terrama2/services/archiver/core/InterpolatorLogger.hpp>
+#endif
+
 #include <terrama2/core/network/TcpManager.hpp>
 #include <terrama2/core/utility/Utils.hpp>
 #include <terrama2/core/utility/TerraMA2Init.hpp>

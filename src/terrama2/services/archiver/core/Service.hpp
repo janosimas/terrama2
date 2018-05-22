@@ -20,15 +20,15 @@
 */
 
 /*!
-  \file terrama2/services/collector/core/Service.hpp
+  \file terrama2/services/archiver/core/Service.hpp
 
   \brief
 
   \author Jano Simas
 */
 
-#ifndef __TERRAMA2_SERVICES_COLLECTOR_CORE_SERVICE_HPP__
-#define __TERRAMA2_SERVICES_COLLECTOR_CORE_SERVICE_HPP__
+#ifndef __TERRAMA2_SERVICES_ARCHIVER_CORE_SERVICE_HPP__
+#define __TERRAMA2_SERVICES_ARCHIVER_CORE_SERVICE_HPP__
 
 // TerraMa2
 #include "Config.hpp"
@@ -38,7 +38,7 @@
 #include "Shared.hpp"
 #include "Typedef.hpp"
 #include "DataManager.hpp"
-#include "CollectorLogger.hpp"
+#include "ArchiverLogger.hpp"
 
 // STL
 #include <memory>
@@ -47,20 +47,20 @@ namespace terrama2
 {
   namespace services
   {
-    namespace collector
+    namespace archiver
     {
       namespace core
       {
         /*!
-          \brief The %Collector Service provides thread and time management for Collector processes.
+          \brief The %Archiver Service provides thread and time management for Archiver processes.
 
           This class is used to manage thread sync and timer listening to access
-          process and store data based on Collector.
+          and achive the data.
 
-          The %Collector Service has a main thread that will check for new data to collect
-          and a threadpool that will be allocated to actively collect and store the data.
+          The %Archiver Service has a main thread that will check for new data to archive
+          and a threadpool that will be allocated to actively archive the data.
         */
-        class TMCOLLECTOREXPORT Service : public terrama2::core::Service
+        class TMARCHIVEREXPORT Service : public terrama2::core::Service
         {
             Q_OBJECT
 
@@ -76,17 +76,17 @@ namespace terrama2
           public slots:
 
             /*!
-              \brief Updates the Collector.
+              \brief Updates the Archiver.
 
-              calls addCollector()
+              calls addArchiver()
             */
-            void updateCollector(CollectorPtr collector) noexcept;
+            void updateArchiver(ArchiverPtr archiver) noexcept;
             /*!
-              \brief Removes the Collector.
+              \brief Removes the Archiver.
 
               Rennuning processes will continue until finished.
             */
-            void removeCollector(CollectorId collectorId) noexcept;
+            void removeArchiver(ArchiverId archiverId) noexcept;
 
             /*!
              * \brief Receive a jSon and update service information with it
@@ -99,9 +99,9 @@ namespace terrama2
             //*! Create a process task and add to taskQueue_
             virtual void prepareTask(const terrama2::core::ExecutionPackage& executionPackage) override;
             /*!
-              \brief Callback method to collect and store data.
+              \brief Callback method to archive data.
             */
-            void collect(terrama2::core::ExecutionPackage executionPackage, std::shared_ptr<CollectorLogger> logger,
+            void archive(terrama2::core::ExecutionPackage executionPackage, std::shared_ptr<ArchiverLogger> logger,
                          std::weak_ptr<DataManager> weakDataManager);
 
             //! Connects signals from DataManager
@@ -109,8 +109,8 @@ namespace terrama2
         };
 
       } // end namespace core
-    }   // end namespace collector
+    }   // end namespace archiver
   }     // end namespace services
 } // end namespace terrama2
 
-#endif //__TERRAMA2_SERVICES_COLLECTOR_CORE_SERVICE_HPP__
+#endif //__TERRAMA2_SERVICES_ARCHIVER_CORE_SERVICE_HPP__
