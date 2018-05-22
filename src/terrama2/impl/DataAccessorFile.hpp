@@ -119,6 +119,7 @@ namespace terrama2
                                                                   DataSetSeries& series,
                                                                   std::shared_ptr< te::dt::TimeInstantTZ >& lastFileTimestamp) const;
 
+        virtual std::shared_ptr<te::dt::TimeInstantTZ> deleteData(const Filter& filter) const override;
 
         /*!
          * \brief Search in a folder and return a list of files that match the mask and filter

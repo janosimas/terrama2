@@ -30,6 +30,7 @@
 #include "Service.hpp"
 #include "Archiver.hpp"
 #include "ArchiverLogger.hpp"
+#include "Exception.hpp"
 
 #include "../../../core/Shared.hpp"
 
@@ -116,12 +117,16 @@ void terrama2::services::archiver::core::Service::archive(terrama2::core::Execut
 
     auto status = ArchiverLogger::ProcessLogger::Status::START;
 
-    //
-    //
-    //
-    //
-    //
-    //
+    terrama2::core::Filter filter;
+    filter.discardAfter = terrama2::core::TimeUtils::timeFromStringInterval(executionPackage.executionDate, archiverPtr->timeFilter);
+
+    if(archiverPtr->output) {
+      dataAccessor->deleteData(filter);
+    } else {
+      QString errMsg = QObject::tr("Archiving data in another storage not implemented.");
+      TERRAMA2_LOG_ERROR() << errMsg;
+      throw archiver::Exception() << ErrorDescription(errMsg);
+    }
 
     TERRAMA2_LOG_INFO() << tr("Archiver %1 finished successfully.").arg(QString::fromStdString(dataSeries->name));
 

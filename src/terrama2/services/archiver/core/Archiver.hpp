@@ -52,6 +52,8 @@ namespace terrama2
         {
           std::string format;
           te::core::URI uri;
+
+          operator bool() const { return !format.empty(); }
         };
 
         /*!

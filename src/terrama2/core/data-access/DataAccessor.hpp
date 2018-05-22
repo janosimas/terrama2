@@ -173,6 +173,16 @@ namespace terrama2
         //! Recover timezone information from dataset
         virtual std::string getTimeZone(DataSetPtr dataSet, bool logErrors = true) const;
 
+
+        /**
+         * @brief Delete data from the storage.
+         * 
+         * @param filter Filter that returns the data that will be deleted.
+         * 
+         * @return Time instant of the most recent data removed
+         */
+        virtual std::shared_ptr<te::dt::TimeInstantTZ> deleteData(const Filter& filter) const { assert(0); }
+        
       protected:
 
         /*!

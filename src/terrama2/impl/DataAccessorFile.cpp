@@ -1027,3 +1027,36 @@ std::shared_ptr<te::mem::DataSet> terrama2::core::DataAccessorFile::generateData
 
   return completeDataset;
 }
+
+std::shared_ptr<te::dt::TimeInstantTZ> terrama2::core::DataAccessorFile::deleteData(const Filter& filter) const
+{
+  auto remover = std::make_shared<terrama2::core::FileRemover>();
+  auto seriesMap = getSeries(filter, remover);
+
+  for(const auto& item : seriesMap)
+  {
+    auto dataset = item.first;
+
+    auto teDataSet = item.second.syncDataSet;
+    for(size_t i = 0; i < teDataSet->size(); ++i)
+    {
+      try
+      {
+        auto fileName = QString::fromStdString(teDataSet->getString(i, "filename"));
+        if(!QFile::remove(fileName))
+        {
+          //This method expects a valid Date/Time, other formats are not valid.
+          QString errMsg = QObject::tr("Error removing file:\n%1.").arg(fileName);
+          TERRAMA2_LOG_ERROR() << errMsg;
+          throw terrama2::core::DataAccessorException() << ErrorDescription(errMsg);
+        }
+      }
+      catch(...)
+      {
+
+      }
+    }
+  }
+
+  return nullptr;
+}
