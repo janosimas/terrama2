@@ -63,7 +63,9 @@ void terrama2::services::archiver::core::Service::prepareTask(const terrama2::co
     auto dataManager = std::static_pointer_cast<terrama2::services::archiver::core::DataManager>(dataManager_.lock());
     auto archiverLogger = std::static_pointer_cast<ArchiverLogger>(logger_->clone());
     assert(archiverLogger);
-    // taskQueue_.emplace(std::bind(&terrama2::services::archiver::core::Service::collect, this, executionPackage, archiverLogger, dataManager));
+    taskQueue_.emplace([&](){
+      archive(executionPackage, archiverLogger, dataManager);
+    });
   }
   catch(const std::exception& e)
   {
