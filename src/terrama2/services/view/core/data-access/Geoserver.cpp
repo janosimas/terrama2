@@ -987,25 +987,58 @@ void terrama2::services::view::core::GeoServer::registerCoverageFile(const std::
 
   te::ws::core::CurlWrapper cURLwrapper;
 
-  te::core::URI uriPut(uri_.uri() + "/rest/workspaces/" + workspace_ + "/coveragestores/"
-                       + QString(QUrl::toPercentEncoding(QString::fromStdString(coverageStoreName), "", "-._~/")).toStdString()
-                       + "/external." + extension + "?configure=first&coverageName=" + coverageName);
+  if(false) {
+    te::core::URI uriPut(uri_.uri() + "/rest/workspaces/" + workspace_ + "/coveragestores/"
+                        + QString(QUrl::toPercentEncoding(QString::fromStdString(coverageStoreName), "", "-._~/")).toStdString()
+                        + "/external." + extension + "?configure=first&coverageName=" + coverageName);
 
-  if(!uriPut.isValid())
-  {
-    QString errMsg = QObject::tr("Invalid URI.");
-    TERRAMA2_LOG_ERROR() << errMsg;
-    TERRAMA2_LOG_ERROR() << uriPut.uri();
-    throw ViewGeoserverException() << ErrorDescription(errMsg + QString::fromStdString(uriPut.uri()));
-  }
-  // Upload Coverage file
-  cURLwrapper.customRequest(uriPut, "PUT", "file://" + coverageFilePath, "Content-Type: text/plain");
-  if(cURLwrapper.responseCode() != 201)
-  {
-    QString errMsg = QObject::tr(cURLwrapper.response().c_str());
-    TERRAMA2_LOG_ERROR() << errMsg;
-    TERRAMA2_LOG_ERROR() << uriPut.uri();
-    throw ViewGeoserverException() << ErrorDescription(errMsg + QString::fromStdString(uriPut.uri()));
+    if(!uriPut.isValid())
+    {
+      QString errMsg = QObject::tr("Invalid URI.");
+      TERRAMA2_LOG_ERROR() << errMsg;
+      TERRAMA2_LOG_ERROR() << uriPut.uri();
+      throw ViewGeoserverException() << ErrorDescription(errMsg + QString::fromStdString(uriPut.uri()));
+    }
+    // Upload Coverage file
+    cURLwrapper.customRequest(uriPut, "PUT", "file://" + coverageFilePath, "Content-Type: text/plain");
+
+    if(cURLwrapper.responseCode() != 201)
+    {
+      QString errMsg = QObject::tr(cURLwrapper.response().c_str());
+      TERRAMA2_LOG_ERROR() << errMsg;
+      TERRAMA2_LOG_ERROR() << uriPut.uri();
+      throw ViewGeoserverException() << ErrorDescription(errMsg + QString::fromStdString(uriPut.uri()));
+    }
+  } else {
+    te::core::URI uriPut(uri_.uri() + "/rest/workspaces/" + workspace_ + "/coveragestores/");
+    if(!uriPut.isValid())
+    {
+      QString errMsg = QObject::tr("Invalid URI.");
+      TERRAMA2_LOG_ERROR() << errMsg;
+      TERRAMA2_LOG_ERROR() << uriPut.uri();
+      throw ViewGeoserverException() << ErrorDescription(errMsg + QString::fromStdString(uriPut.uri()));
+    }
+
+    std::string xml = 
+    "<coverageStore>"
+    "   <type>GeoTIFF</type>"
+    "   <enabled>true</enabled>"
+    "   <name>" + coverageStoreName + "</name>"
+    "   <url> file://" + coverageFilePath +"</url>"
+    "   <srs> EPSG:29193 </srs>"
+    "   <workspace> <name>terrama2_1</name> </workspace>"
+    "</coverageStore>";
+
+    // Upload Coverage file
+    cURLwrapper.customRequest(uriPut, "POST", xml, "Content-Type: application/xml");
+
+    if(cURLwrapper.responseCode() != 201)
+    {
+      QString errMsg = QObject::tr(cURLwrapper.response().c_str());
+      TERRAMA2_LOG_ERROR() << errMsg;
+      TERRAMA2_LOG_ERROR() << uriPut.uri();
+      throw ViewGeoserverException() << ErrorDescription(errMsg + QString::fromStdString(uriPut.uri()));
+    }
   }
 }
 
