@@ -1010,6 +1010,12 @@ void terrama2::services::view::core::GeoServer::registerCoverageFile(const std::
       throw ViewGeoserverException() << ErrorDescription(errMsg + QString::fromStdString(uriPut.uri()));
     }
   } else {
+
+    /*
+    FIXME: This is a test code for creating a coverageStore and a layer with pre-configured SRID,
+      some static raster are nor correctly recognized by geoserver and need to be configured.
+    */
+
     te::core::URI uriPut(uri_.uri() + "/rest/workspaces/" + workspace_ + "/coveragestores/");
     if(!uriPut.isValid())
     {
