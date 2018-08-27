@@ -37,6 +37,7 @@
 // TerraLib
 #include <terralib/dataaccess/utils/Utils.h>
 #include <terralib/raster/Band.h>
+#include <terralib/raster/BandProperty.h>
 
 // Qt
 #include <QObject>
@@ -219,9 +220,9 @@ void terrama2::services::alert::core::Report::updateReportDataset(const std::sha
 void terrama2::services::alert::core::Report::updateReportGridDataset(const std::shared_ptr<te::da::DataSet> dataSet)
 {
   dataSet_ = std::dynamic_pointer_cast<te::mem::DataSet>(dataSet);
-  std::string riskName;
-  std::tie(maxRisk_, riskName) = legend_->riskLevel(retrieveMaxValue());
-  std::tie(minRisk_, riskName) = legend_->riskLevel(retrieveMinValue());
+  std::tie(maxRisk_, maxRiskName_) = legend_->riskLevel(retrieveMaxValue());
+  std::tie(minRisk_, minRiskName_) = legend_->riskLevel(retrieveMinValue());
+  std::tie(meanRisk_, meanRiskName_) = legend_->riskLevel(retrieveMeanValue());
 }
 
 void terrama2::services::alert::core::Report::updateReportMonitoredObjectDataset(const std::shared_ptr<te::da::DataSet> dataSet)
@@ -385,7 +386,6 @@ double terrama2::services::alert::core::Report::retrieveMinValue() const
   }
 }
 
-
 double terrama2::services::alert::core::Report::retrieveMeanValue() const
 {
   if(alertDataSeries_->semantics.dataSeriesType != terrama2::core::DataSeriesType::GRID)
@@ -414,8 +414,23 @@ double terrama2::services::alert::core::Report::retrieveMeanValue() const
 
   try
   {
-    size_t band = static_cast<size_t>(std::stoi(alert_->riskAttribute));
-    return dataSet_->getRaster(pos)->getBand(band)->getMeanValue().real();
+    size_t bandNumber = static_cast<size_t>(std::stoi(alert_->riskAttribute));
+    auto band = dataSet_->getRaster(pos)->getBand(bandNumber);
+    auto no_data = band->getProperty()->m_noDataValue;
+    auto hist = band->getHistogramR();
+
+    uint32_t count = 0;
+    uint32_t sum = 0;
+    for(const auto& occurrence : hist)
+    {
+      if(occurrence.first == no_data)
+        continue;
+      
+      count += occurrence.second;
+      sum += occurrence.first*occurrence.second;
+    }
+
+    return std::round(sum/count);
   }
   catch(const std::invalid_argument& /*e*/)
   {

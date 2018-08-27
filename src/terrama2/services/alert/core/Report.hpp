@@ -191,16 +191,17 @@ namespace terrama2
             bool riskChanged() const { return riskChanged_; }
             uint32_t maxRisk() const { return maxRisk_; }
             uint32_t minRisk() const { return minRisk_; }
+            uint32_t meanRisk() const { return meanRisk_; }
+            std::string maxRiskName() const { return maxRiskName_; }
+            std::string minRiskName() const { return minRiskName_; }
+            std::string meanRiskName() const { return meanRiskName_; }
 
             terrama2::core::DataSeriesType dataSeriesType() const;
 
-
-//TODO: review these functions visibility, not to be used publicly
+          protected:
             double retrieveMaxValue() const;
             double retrieveMinValue() const;
             double retrieveMeanValue() const;
-
-          protected:
 
             /*!
              * \brief Sets the report DataSet and adjust it to reports
@@ -223,6 +224,10 @@ namespace terrama2
             bool riskChanged_ = false; //!< Flags if the alert dataset has changed the value from last time.
             uint32_t maxRisk_ = std::numeric_limits<uint32_t>::min();
             uint32_t minRisk_ = std::numeric_limits<uint32_t>::max();
+            uint32_t meanRisk_ = std::numeric_limits<uint32_t>::max();
+            std::string maxRiskName_;
+            std::string minRiskName_;
+            std::string meanRiskName_;
         };
       } /* core */
     } /* alert */

@@ -130,7 +130,7 @@ void terrama2::services::alert::core::replaceReportTags(std::string& text, Repor
 
   try
   {
-    max_value = std::to_string(report->retrieveMaxValue());
+    max_value = report->maxRiskName();
   }
   catch(const ReportException& /*e*/)
   {
@@ -142,7 +142,7 @@ void terrama2::services::alert::core::replaceReportTags(std::string& text, Repor
 
   try
   {
-    min_value = std::to_string(report->retrieveMinValue());
+    min_value = report->minRiskName();
   }
   catch(const ReportException& /*e*/)
   {
@@ -154,7 +154,7 @@ void terrama2::services::alert::core::replaceReportTags(std::string& text, Repor
 
   try
   {
-    mean_value = std::to_string(report->retrieveMeanValue());
+    mean_value = report->meanRiskName();
   }
   catch(const ReportException& /*e*/)
   {
