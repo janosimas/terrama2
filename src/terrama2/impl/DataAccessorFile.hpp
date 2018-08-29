@@ -99,7 +99,7 @@ namespace terrama2
 
         void applyFilters(const terrama2::core::Filter &filter, const terrama2::core::DataSetPtr &dataSet,
                           const std::shared_ptr<te::mem::DataSet> &completeDataset,
-                          std::shared_ptr<te::dt::TimeInstantTZ> &lastFileTimestamp) const;
+                          std::shared_ptr<te::dt::TimeInstantTZ> lastFileTimestamp) const;
 
         virtual bool hasControlFile() const;
 

@@ -33,7 +33,7 @@
 //TerraMA2
 #include "Config.hpp"
 #include "../core/Shared.hpp"
-#include "../core/data-access/DataAccessor.hpp"
+#include "DataAccessorFile.hpp"
 
 namespace terrama2
 {
@@ -59,12 +59,13 @@ namespace terrama2
       },
 
     */
-    class TMIMPLEXPORT DataAccessorJsonCemaden : public virtual DataAccessor
+    class TMIMPLEXPORT DataAccessorJsonCemaden : public virtual DataAccessorFile
     {
       public:
         DataAccessorJsonCemaden(DataProviderPtr dataProvider, DataSeriesPtr dataSeries)
-          : DataAccessor(dataProvider, dataSeries)
-        {}
+          : DataAccessor(dataProvider, dataSeries),
+            DataAccessorFile(dataProvider, dataSeries) { }
+
         virtual ~DataAccessorJsonCemaden() = default;
 
         using terrama2::core::DataAccessor::getSeries;
@@ -89,7 +90,6 @@ namespace terrama2
          */
         virtual std::string retrieveData(const DataRetrieverPtr dataRetriever,
                                          DataSetPtr dataSet, const Filter& filter, std::shared_ptr<FileRemover> remover) const override;
-
 
       private:
         std::string getDCPCode(DataSetPtr dataset) const;
