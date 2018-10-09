@@ -334,7 +334,7 @@ bool terrama2::core::DataStoragerTable::isPropertyEqual(te::dt::Property* newPro
   std::string oldPropertyName = oldMember->getName();
   std::transform(oldPropertyName.begin(), oldPropertyName.end(), oldPropertyName.begin(), ::tolower);
 
-  bool noEqual = newPropertyName == oldPropertyName;
+  bool noEqual = (newPropertyName == oldPropertyName) || (newPropertyName == "\""+oldPropertyName+"\"")|| (oldPropertyName == "\""+newPropertyName+"\"");
   if(!noEqual)
     return false;
 

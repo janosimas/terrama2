@@ -31,6 +31,7 @@
  #include "DataAccessorJsonCemaden.hpp"
  #include "../core/utility/DataRetrieverFactory.hpp"
  #include "../core/utility/Utils.hpp"
+ #include "../core/utility/Logger.hpp"
  #include "../core/utility/TimeUtils.hpp"
  #include "../core/Exception.hpp"
 
@@ -44,38 +45,38 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
- std::map<DataSetId, std::string> terrama2::core::DataAccessorJsonCemaden::getFiles(const Filter& filter, std::shared_ptr<FileRemover> remover) const
- {
-   auto& retrieverFactory = DataRetrieverFactory::getInstance();
-   DataRetrieverPtr dataRetriever = retrieverFactory.make(dataProvider_);
+std::map<DataSetId, std::string> terrama2::core::DataAccessorJsonCemaden::getFiles(const Filter& filter, std::shared_ptr<FileRemover> remover) const
+{
+  auto& retrieverFactory = DataRetrieverFactory::getInstance();
+  DataRetrieverPtr dataRetriever = retrieverFactory.make(dataProvider_);
 
-   // Cemaden has only one service for all DCPs
-   // all information is replicated in all DCPs
-   auto dataset = dataSeries_->datasetList.front();
-   auto uri = retrieveData(dataRetriever, dataset, filter, remover);
+  // Cemaden has only one service for all DCPs
+  // all information is replicated in all DCPs
+  auto dataset = dataSeries_->datasetList.front();
+  auto uri = retrieveData(dataRetriever, dataset, filter, remover);
 
-   // map all dataset to the same uri
-   std::map<DataSetId, std::string> uriMap;
-   for(const auto& dataset : dataSeries_->datasetList)
-   {
-     uriMap.emplace(dataset->id, uri);
-   }
+  // map all dataset to the same uri
+  std::map<DataSetId, std::string> uriMap;
+  for(const auto& dataset : dataSeries_->datasetList)
+  {
+    uriMap.emplace(dataset->id, uri);
+  }
 
-   return uriMap;
- }
+  return uriMap;
+}
 
- void terrama2::core::DataAccessorJsonCemaden::getSeriesCallback( const Filter& filter,
-                                                                  std::shared_ptr<FileRemover> remover,
-                                                                  std::function<void(const DataSetId&, const std::string& /*uri*/)> processFile) const
- {
-   // Cemaden has a webservice for all files
-   // only one download is needed
-   auto datasetMap = getFiles(filter, remover);
-   for (const auto& it : datasetMap)
-   {
-     processFile(it.first, it.second);
-   }
- }
+void terrama2::core::DataAccessorJsonCemaden::getSeriesCallback( const Filter& filter,
+                                                                std::shared_ptr<FileRemover> remover,
+                                                                std::function<void(const DataSetId&, const std::string& /*uri*/)> processFile) const
+{
+  // Cemaden has a webservice for all files
+  // only one download is needed
+  auto datasetMap = getFiles(filter, remover);
+  for (const auto& it : datasetMap)
+  {
+    processFile(it.first, it.second);
+  }
+}
 
 std::string terrama2::core::DataAccessorJsonCemaden::getDCPCode(DataSetPtr dataset) const
 {
@@ -160,9 +161,9 @@ terrama2::core::DataSetSeries terrama2::core::DataAccessorJsonCemaden::getSeries
     auto timestampStr = obj[inputTimestampProperty].toString().toStdString();
     auto timestamp = terrama2::core::TimeUtils::stringToTimestamp(timestampStr, "%Y-%m-%d %H:%M:%S%F");
     // filter by timestamp
-    if((filter.discardBefore && (*filter.discardBefore > *timestamp))
-        || (filter.discardAfter && (*filter.discardAfter < *timestamp)))
-        continue;
+    // if((filter.discardBefore && (*filter.discardBefore > *timestamp))
+    //     || (filter.discardAfter && (*filter.discardAfter < *timestamp)))
+    //     continue;
 
     // create new item
     auto item = std::unique_ptr<te::mem::DataSetItem>(new te::mem::DataSetItem(teDataSet.get()));
@@ -184,7 +185,7 @@ terrama2::core::DataSetSeries terrama2::core::DataAccessorJsonCemaden::getSeries
         continue;
 
       // property name
-      auto keyStr = key.toStdString();
+      auto keyStr = "\""+key.toStdString()+"\"";
 
       // check if the property is already registered in the dataset
       auto properties = dataSetType->getProperties();
@@ -208,6 +209,14 @@ terrama2::core::DataSetSeries terrama2::core::DataAccessorJsonCemaden::getSeries
       teDataSet->remove(item.get());
     }
     item.release();
+  }
+  
+  applyFilters(filter, dataSet, teDataSet, nullptr);
+  if(!teDataSet.get() || teDataSet->isEmpty())
+  {
+    QString errMsg = QObject::tr("No data in dataset: %1.").arg(dataSet->id);
+    TERRAMA2_LOG_WARNING() << errMsg;
+    throw terrama2::core::NoDataException() << ErrorDescription(errMsg);
   }
 
   terrama2::core::DataSetSeries serie;
